@@ -7,6 +7,8 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: always
+    volumes:
+      - storage-data:/var/www/html/storage
     depends_on:
       - redis
 
@@ -23,3 +25,6 @@ services:
   redis:
     image: redis:alpine
     restart: always
+
+volumes:
+  storage-data:
