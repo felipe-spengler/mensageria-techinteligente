@@ -31,11 +31,17 @@ class User extends Authenticatable implements FilamentUser
         'email',
         'phone',
         'password',
+        'is_admin',
     ];
 
     public function getWppPhoneAttribute()
     {
         return preg_replace('/[^0-9]/', '', $this->phone);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->is_admin === true;
     }
 
     /**
@@ -58,6 +64,7 @@ class User extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_admin' => 'boolean',
         ];
     }
 }

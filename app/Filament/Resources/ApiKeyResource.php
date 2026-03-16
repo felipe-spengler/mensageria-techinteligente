@@ -49,13 +49,21 @@ class ApiKeyResource extends Resource
             ]);
     }
 
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getEloquentQuery()
+            ->when(!auth()->user()->is_admin, fn ($query) => $query->where('user_id', auth()->id()));
+    }
+
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('user.name')->label('Usuário'),
+                Tables\Columns\TextColumn::make('user.name')
+                    ->label('Usuário')
+                    ->visible(fn () => auth()->user()->is_admin),
                 Tables\Columns\TextColumn::make('plan.name')->label('Plano'),
-                Tables\Columns\TextColumn::make('key')->label('Chave')->limit(15),
+                Tables\Columns\TextColumn::make('key')->label('Chave')->limit(15)->copyable(),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -67,7 +75,7 @@ class ApiKeyResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\DeleteAction::make()->visible(fn () => auth()->user()->is_admin),
             ]);
     }
 

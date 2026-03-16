@@ -18,10 +18,21 @@ class MessageLogResource extends Resource
     protected static ?string $modelLabel = 'Log de Envio';
     protected static ?string $pluralModelLabel = 'Relatório de Envios';
 
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getEloquentQuery()
+            ->when(!auth()->user()->is_admin, function ($query) {
+                $query->whereHas('apiKey', fn($q) => $q->where('user_id', auth()->id()));
+            });
+    }
+
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('apiKey.user.name')
+                    ->label('Usuário')
+                    ->visible(fn () => auth()->user()->is_admin),
                 Tables\Columns\TextColumn::make('apiKey.plan.name')->label('Plano'),
                 Tables\Columns\TextColumn::make('to')->label('Destinatário')->searchable(),
                 Tables\Columns\TextColumn::make('message')->label('Mensagem')->limit(50),

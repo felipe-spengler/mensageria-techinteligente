@@ -98,5 +98,16 @@ class DefaultDataSeeder extends Seeder
         foreach ($settings as $setting) {
             Setting::updateOrCreate(['key' => $setting['key']], $setting);
         }
+
+        // Create Admin User
+        \App\Models\User::updateOrCreate(
+            ['email' => 'admin@techinteligente.site'],
+            [
+                'name' => 'Administrador',
+                'password' => \Illuminate\Support\Facades\Hash::make('teste123'),
+                'is_admin' => true,
+                'phone' => '5545999999999'
+            ]
+        );
     }
 }
