@@ -21,20 +21,33 @@ class PlanController extends Controller
 
     public function processPurchase(Request $request)
     {
-        $request->validate([
-            'plan_id' => 'required|exists:plans,id',
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'phone' => 'required|string',
-            'password' => 'required|min:6',
-        ]);
+        $isLoggedIn = auth()->check();
 
-        $user = \App\Models\User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'password' => \Illuminate\Support\Facades\Hash::make($request->password),
-        ]);
+        $rules = [
+            'plan_id' => 'required|exists:plans,id',
+        ];
+
+        if (!$isLoggedIn) {
+            $rules += [
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|unique:users,email',
+                'phone' => 'required|string',
+                'password' => 'required|min:6',
+            ];
+        }
+
+        $request->validate($rules);
+
+        if ($isLoggedIn) {
+            $user = auth()->user();
+        } else {
+            $user = \App\Models\User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'password' => \Illuminate\Support\Facades\Hash::make($request->password),
+            ]);
+        }
 
         $plan = \App\Models\Plan::find($request->plan_id);
         $txid = 'PLAN-' . strtoupper(\Illuminate\Support\Str::random(8));

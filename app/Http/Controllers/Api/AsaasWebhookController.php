@@ -39,17 +39,39 @@ class AsaasWebhookController extends Controller
 
     protected function processPayment($payment)
     {
-        // 1. Check if it's a manual PIX (B2C)
         $transaction = PixTransaction::where('txid', $payment['externalReference'] ?? '')->first();
-        if ($transaction) {
-            $transaction->update(['status' => 'paid']);
-            
-            // Trigger the message sending logic for this manual transaction
-            // (Assuming metadata has the message details)
-            return;
-        }
+        if (!$transaction) return;
 
-        // 2. Check if it's a Subscription (B2B)
-        // Here we would link the user to the subscription and active their API Keys
+        $transaction->update(['status' => 'paid']);
+        $metadata = json_encode($transaction->metadata); // Assuming it might be casted or needs decoding
+        if (is_string($metadata)) $metadata = json_decode($metadata, true);
+        else $metadata = (array)$transaction->metadata;
+
+        // 1. Check if it's a manual PIX (B2C) - Handled above with status update
+
+        // 2. Check if it's a Subscription/Upgrade (SaaS)
+        if (isset($metadata['type']) && $metadata['type'] === 'subscription') {
+            $userId = $metadata['user_id'];
+            $planId = $metadata['plan_id'];
+            $plan = \App\Models\Plan::find($planId);
+
+            if ($plan) {
+                $apiKey = \App\Models\ApiKey::firstOrNew(['user_id' => $userId]);
+                
+                // Only generate a new key if it's the first time
+                if (!$apiKey->exists) {
+                    $apiKey->key = \Illuminate\Support\Str::random(40);
+                }
+
+                $apiKey->fill([
+                    'plan_id' => $plan->id,
+                    'status' => 'active',
+                    'expires_at' => now()->addDays($plan->duration_days),
+                    'name' => 'Chave Principal - ' . $plan->name
+                ])->save();
+                
+                Log::info("Plan activated/renewed for user {$userId}: {$plan->name}. Key preserved: " . ($apiKey->wasRecentlyCreated ? 'No (New)' : 'Yes'));
+            }
+        }
     }
 }

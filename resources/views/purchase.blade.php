@@ -19,26 +19,34 @@
             @csrf
             <input type="hidden" name="plan_id" value="{{ $plan->id }}">
             
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Nome Completo</label>
-                <input type="text" id="name" required class="w-full bg-gray-800 border-gray-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none">
-            </div>
+            @guest
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Nome Completo</label>
+                    <input type="text" id="name" required class="w-full bg-gray-800 border-gray-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
 
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">E-mail</label>
-                <input type="email" id="email" required class="w-full bg-gray-800 border-gray-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none">
-            </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">E-mail</label>
+                    <input type="email" id="email" required class="w-full bg-gray-800 border-gray-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
 
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">WhatsApp (com DDD)</label>
-                <input type="text" id="phone" placeholder="Ex: 5545999999999" required class="w-full bg-gray-800 border-gray-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none">
-                <p class="text-[10px] text-gray-600 mt-1">Usaremos este número para avisos importantes sobre seu plano.</p>
-            </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">WhatsApp (com DDD)</label>
+                    <input type="text" id="phone" placeholder="Ex: 5545999999999" required class="w-full bg-gray-800 border-gray-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                    <p class="text-[10px] text-gray-600 mt-1">Usaremos este número para avisos importantes sobre seu plano.</p>
+                </div>
 
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Senha de Acesso</label>
-                <input type="password" id="password" required class="w-full bg-gray-800 border-gray-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none">
-            </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Senha de Acesso</label>
+                    <input type="password" id="password" required class="w-full bg-gray-800 border-gray-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+            @else
+                <div class="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 text-sm mb-6">
+                    <p class="text-gray-400">Você está logado como:</p>
+                    <p class="font-bold text-white">{{ auth()->user()->name }} ({{ auth()->user()->email }})</p>
+                    <p class="text-[10px] text-blue-400 mt-1">O plano será vinculado automaticamente à sua conta.</p>
+                </div>
+            @endguest
 
             <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition duration-200 mt-4 shadow-lg shadow-blue-900/20">
                 Gerar PIX de Pagamento
@@ -77,12 +85,16 @@
 
             const data = {
                 plan_id: '{{ $plan->id }}',
-                name: document.getElementById('name').value,
-                email: document.getElementById('email').value,
-                phone: document.getElementById('phone').value,
-                password: document.getElementById('password').value,
                 _token: '{{ csrf_token() }}'
             };
+
+            // Only add registration fields if the user is not logged in
+            if (!{{ auth()->check() ? 'true' : 'false' }}) {
+                data.name = document.getElementById('name').value;
+                data.email = document.getElementById('email').value;
+                data.phone = document.getElementById('phone').value;
+                data.password = document.getElementById('password').value;
+            }
 
             const response = await fetch('/purchase', {
                 method: 'POST',
