@@ -11,7 +11,12 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     libzip-dev \
     zip \
-    unzip
+    unzip \
+    gnupg
+
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs
 
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -34,11 +39,23 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Copy composer files first for better caching
 COPY composer.json composer.lock ./
 
-# Install dependencies
-RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-platform-reqs
+# Install dependencies without scripts (since the app isn't copied yet)
+RUN composer install --no-interaction --no-dev --no-scripts --no-autoloader --ignore-platform-reqs
+
+# Copy package.json and package-lock.json (if exists)
+COPY package*.json ./
+
+# Install npm dependencies
+RUN npm install
 
 # Copy existing application directory contents
 COPY . /var/www/html
+
+# Build assets
+RUN npm run build
+
+# Generate the autoloader and run discovery scripts now that code is present
+RUN composer dump-autoload --optimize
 
 # Fix permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
