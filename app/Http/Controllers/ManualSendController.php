@@ -111,21 +111,26 @@ class ManualSendController extends Controller
     public function getBridgeQrCode()
     {
         try {
-            $response = \Illuminate\Support\Facades\Http::get('http://bridge:3000/qrcode');
+            $url = env('WPP_BRIDGE_URL', 'http://bridge:3000') . '/qrcode';
+            $response = \Illuminate\Support\Facades\Http::get($url);
             return response($response->body(), 200)
                 ->header('Content-Type', 'image/png');
         } catch (\Exception $e) {
-            return response('Bridge offline', 503);
+            return response('Bridge offline: ' . $e->getMessage(), 503);
         }
     }
 
     public function getBridgeStatus()
     {
         try {
-            $response = \Illuminate\Support\Facades\Http::get('http://bridge:3000/status');
+            $url = env('WPP_BRIDGE_URL', 'http://bridge:3000') . '/status';
+            $response = \Illuminate\Support\Facades\Http::get($url);
             return response()->json($response->json());
         } catch (\Exception $e) {
-            return response()->json(['status' => 'offline'], 503);
+            return response()->json([
+                'status' => 'offline',
+                'error' => $e->getMessage()
+            ], 503);
         }
     }
 
