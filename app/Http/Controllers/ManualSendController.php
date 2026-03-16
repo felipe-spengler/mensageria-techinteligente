@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\MessageLog;
 use App\Models\PixTransaction;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -112,7 +113,7 @@ class ManualSendController extends Controller
     {
         try {
             $url = env('WPP_BRIDGE_URL', 'http://bridge:3000') . '/qrcode';
-            $response = \Illuminate\Support\Facades\Http::get($url);
+            $response = Http::get($url);
             return response($response->body(), 200)
                 ->header('Content-Type', 'image/png');
         } catch (\Exception $e) {
@@ -124,7 +125,7 @@ class ManualSendController extends Controller
     {
         try {
             $url = env('WPP_BRIDGE_URL', 'http://bridge:3000') . '/status';
-            $response = \Illuminate\Support\Facades\Http::get($url);
+            $response = Http::get($url);
             return response()->json($response->json());
         } catch (\Exception $e) {
             return response()->json([
