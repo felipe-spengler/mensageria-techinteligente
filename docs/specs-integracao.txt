@@ -1,0 +1,42 @@
+Guia de Integração: Integra_SaaS (WhatsApp API)
+Este documento orienta como integrar qualquer sistema (incluindo seu App Esportivo) à API de envio de WhatsApp.
+
+🔑 Autenticação
+Todas as requisições devem incluir a sua API_KEY no cabeçalho HTTP.
+
+Headers:
+
+http
+Authorization: Bearer SUA_CHAVE_AQUI
+Content-Type: application/json
+📨 Enviando uma Mensagem
+Endpoint: POST https://api.seusaas.com/v1/send
+
+Exemplo de Requisição (JSON)
+json
+{
+  "to": "5545999999999",
+  "message": "Olá! Sua inscrição no evento foi confirmada com sucesso.",
+  "media": "https://link-da-imagem.com/arte.jpg" // Opcional: use null se for apenas texto
+}
+🚀 Exemplo de Integração em Laravel (PHP)
+No seu App Esportivo, você faria assim:
+
+php
+use Illuminate\Support\Facades\Http;
+public function enviarWhats($telefone, $texto, $urlImagem = null) {
+    $response = Http::withHeaders([
+        'Authorization' => 'Bearer ' . env('WPP_SAAS_KEY'),
+    ])->post('https://api.seusaas.com/v1/send', [
+        'to' => $telefone,
+        'message' => $texto,
+        'media' => $urlImagem
+    ]);
+    return $response->successful();
+}
+🛡️ Segurança Recomendada
+Nunca exponha a sua API_KEY no frontend ou código JavaScript público.
+O campo API_KEY deve estar configurado no seu 
+.env
+.
+Sempre use conexões HTTPS para garantir que a chave não seja interceptada.

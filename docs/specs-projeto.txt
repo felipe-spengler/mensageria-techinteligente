@@ -1,0 +1,25 @@
+Projeto: SaaS_Wpp (API de Mensagens)
+Este documento descreve o funcionamento interno do serviço de envio de mensagens via WhatsApp, projetado para rodar em ambiente Linux (VPS) e atuar como um provedor independente para sistemas externos.
+
+🏗️ Arquitetura Técnica
+1. Ambiente
+OS: Linux (Ubuntu/Debian recomendado na VPS).
+Runtime: Node.js (para o bridge WhatsApp) e Laravel ou Node (para a API).
+Process Manager: PM2 (para manter os serviços rodando 24/7).
+2. Fluxo Interno
+O sistema recebe a requisição via HTTPS/REST.
+Valida a API_KEY enviada no cabeçalho.
+Coloca a mensagem em uma fila local (Redis) para evitar bloqueios.
+O Worker do WhatsApp (usando WPPConnect ou similar) consome a fila e faz o disparo.
+3. Segurança (API_KEY)
+Cada sistema autorizado terá uma API_KEY única gerada no SaaS.
+A API deve comparar essa chave com a armazenada no banco de dados para cada requisição.
+Recomenda-se o uso de Bearer Tokens no header Authorization.
+🛠️ Componentes Principais
+API Server: Gerencia chaves, limites de uso (rate limiting) e logs de entrega.
+WhatsApp Bridge: Instância do navegador headless que interage com o protocolo do WhatsApp.
+Queue Manager: Garante que se o WhatsApp cair, as mensagens fiquem guardadas para serem enviadas assim que a conexão voltar.
+Diferenciais
+Linux Native: Otimizado para rodar em containers ou VPS baratas.
+Escalável: Você pode ter múltiplas instâncias do bridge para diferentes números de telefone.
+Mensalidade: Controle de expiração por API_KEY.
