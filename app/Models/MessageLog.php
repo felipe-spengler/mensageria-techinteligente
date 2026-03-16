@@ -15,6 +15,8 @@ class MessageLog extends Model
         'status',
         'error_message',
         'sent_at',
+        'ip_address',
+        'is_free',
     ];
 
     protected $casts = [
