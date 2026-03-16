@@ -111,26 +111,39 @@ class ManualSendController extends Controller
 
     public function getBridgeQrCode()
     {
+        $url = env('WPP_BRIDGE_URL', 'http://bridge:3000') . '/qrcode';
         try {
-            $url = env('WPP_BRIDGE_URL', 'http://bridge:3000') . '/qrcode';
-            $response = Http::get($url);
-            return response($response->body(), 200)
-                ->header('Content-Type', 'image/png');
+            $response = Http::timeout(5)->get($url);
+            if ($response->successful()) {
+                return response($response->body(), 200)
+                    ->header('Content-Type', 'image/png');
+            }
+            throw new \Exception("Bridge returned status " . $response->status());
         } catch (\Exception $e) {
-            return response('Bridge offline: ' . $e->getMessage(), 503);
+            \Illuminate\Support\Facades\Log::error("QR Code Error [URL: $url]: " . $e->getMessage());
+            return response('Bridge offline or unreachable: ' . $e->getMessage() . ' (URL: ' . $url . ')', 503);
         }
     }
 
     public function getBridgeStatus()
     {
+        $url = env('WPP_BRIDGE_URL', 'http://bridge:3000') . '/status';
         try {
-            $url = env('WPP_BRIDGE_URL', 'http://bridge:3000') . '/status';
-            $response = Http::get($url);
-            return response()->json($response->json());
+            $response = Http::timeout(5)->get($url);
+            if ($response->successful()) {
+                return response()->json($response->json());
+            }
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bridge returned status ' . $response->status(),
+                'url' => $url
+            ], 503);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Status Error [URL: $url]: " . $e->getMessage());
             return response()->json([
                 'status' => 'offline',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'url' => $url
             ], 503);
         }
     }

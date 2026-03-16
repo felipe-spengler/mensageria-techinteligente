@@ -74,11 +74,11 @@ class DefaultDataSeeder extends Seeder
             $plan = Plan::updateOrCreate(['name' => $planData['name']], $planData);
             
             // If it's the professional plan, let's create a default API key for testing
-            if ($plan->name === 'Profissional') {
+            if ($plan->name === 'Starter (Texto)') {
                 \App\Models\ApiKey::updateOrCreate(
-                    ['key' => 'pro_test_key_12345'],
+                    ['key' => 'test_key_master_123'],
                     [
-                        'name' => 'Chave de Teste Master',
+                        'user_id' => 2, // Admin ID
                         'plan_id' => $plan->id,
                         'status' => 'active',
                         'expires_at' => now()->addYears(1),

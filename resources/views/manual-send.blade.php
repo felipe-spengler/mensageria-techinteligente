@@ -28,7 +28,7 @@
         <div class="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[120px]"></div>
     </div>
 
-    <nav class="relative z-20 p-8 flex justify-between items-center max-w-7xl mx-auto">
+    <nav class="relative z-30 p-8 flex justify-between items-center max-w-7xl mx-auto">
         <div class="text-2xl font-black tracking-tighter flex items-center gap-2">
             <a href="/" class="flex items-center gap-2">
                 <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">T</div>
@@ -44,8 +44,35 @@
                 <a href="/admin/login" class="hover:text-white transition">Login</a>
             @endauth
         </div>
-        <a href="/#planos" class="bg-blue-600 text-white px-6 py-2 rounded-full text-sm font-bold hover:bg-blue-500 transition">SaaS API</a>
+
+        <div class="flex items-center gap-4">
+            <a href="/#planos" class="hidden sm:block bg-blue-600 text-white px-6 py-2 rounded-full text-sm font-bold hover:bg-blue-500 transition">SaaS API</a>
+            
+            <button onclick="toggleMobileMenu()" class="md:hidden text-gray-400 hover:text-white p-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </div>
+
+        <!-- Mobile Menu Overlay -->
+        <div id="mobileMenu" class="fixed inset-0 bg-[#030712]/95 backdrop-blur-xl z-50 hidden flex-col items-center justify-center gap-8 text-2xl font-black">
+            <button onclick="toggleMobileMenu()" class="absolute top-8 right-8 text-gray-400 hover:text-white">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <a href="/enviar" onclick="toggleMobileMenu()" class="hover:text-blue-500 transition">Envio Particular</a>
+            <a href="/#planos" onclick="toggleMobileMenu()" class="hover:text-blue-500 transition">Preços</a>
+            <a href="/admin/login" onclick="toggleMobileMenu()" class="hover:text-blue-500 transition">Login</a>
+            <a href="/#planos" onclick="toggleMobileMenu()" class="bg-blue-600 text-white px-8 py-3 rounded-full">SaaS API</a>
+        </div>
     </nav>
+
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('hidden');
+            menu.classList.toggle('flex');
+            document.body.classList.toggle('overflow-hidden');
+        }
+    </script>
 
     <main class="relative z-10 max-w-7xl mx-auto px-6 py-12 flex flex-col items-center">
         <div class="max-w-xl w-full">
