@@ -35,41 +35,63 @@
 
     <main class="max-w-7xl mx-auto px-6 py-20 text-center">
         <h1 class="text-5xl font-extrabold mb-4">Escolha seu plano de disparos</h1>
-        <p class="text-gray-400 mb-16 max-w-2xl mx-auto">Conecte sua API do WhatsApp em segundos e comece a escalar suas comunicações de forma profissional.</p>
+        <p class="text-gray-400 mb-16 max-w-2xl mx-auto">Tabela de preços SaaS para envio de mensagens profissionais via WhatsApp API.</p>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            @foreach($plans as $plan)
-            <div class="{{ $loop->index == 1 ? 'gradient-border' : 'glass border border-gray-800 rounded-3xl' }} p-8 flex flex-col justify-between transition hover:scale-105 duration-300">
-                <div>
-                    <h2 class="text-xl font-bold mb-2">{{ $plan->name }}</h2>
-                    <div class="text-4xl font-bold mb-4">R$ {{ number_format($plan->price, 2, ',', '.') }}<span class="text-sm text-gray-500 font-normal">/mês</span></div>
-                    <p class="text-gray-400 text-sm mb-6">{{ $plan->description }}</p>
-                    
-                    <ul class="text-left space-y-4 mb-8">
-                        <li class="flex items-center text-sm text-gray-300">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            {{ $plan->message_limit > 900000 ? 'Mensagens Ilimitadas' : number_format($plan->message_limit, 0, ',', '.') . ' mensagens' }}
-                        </li>
-                        <li class="flex items-center text-sm text-gray-300">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            Duração: {{ $plan->duration_days }} dias
-                        </li>
-                        <li class="flex items-center text-sm text-gray-300">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            Painel de Controle Full
-                        </li>
-                        <li class="flex items-center text-sm text-gray-300">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            Integração via API
-                        </li>
-                    </ul>
+        @php
+            $textPlans = $plans->where('type', 'text');
+            $mediaPlans = $plans->where('type', 'media');
+        @endphp
+
+        <!-- Só Texto -->
+        <div class="mb-20">
+            <h2 class="text-2xl font-bold mb-8 text-blue-400">Categoria: Só Texto</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
+                @foreach($textPlans as $plan)
+                <div class="glass border border-gray-800 rounded-3xl p-8 flex flex-col justify-between transition hover:border-blue-500/50 duration-300">
+                    <div>
+                        <h3 class="text-xl font-bold mb-2">{{ $plan->name }}</h3>
+                        <div class="text-4xl font-bold mb-4">R$ {{ number_format($plan->price, 0) }}<span class="text-sm text-gray-500 font-normal">/mês</span></div>
+                        <ul class="space-y-3 mb-8">
+                            <li class="flex items-center text-sm text-gray-300">
+                                <svg class="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>
+                                {{ number_format($plan->message_limit, 0) }} Mensagens
+                            </li>
+                            <li class="flex items-center text-sm text-gray-500">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Custo unitário: R$ {{ number_format($plan->price / $plan->message_limit, 2, ',', '.') }}
+                            </li>
+                        </ul>
+                    </div>
+                    <a href="/purchase/{{ $plan->id }}" class="block w-full py-3 text-center rounded-xl font-bold bg-gray-800 hover:bg-blue-600 transition">Assinar</a>
                 </div>
-
-                <a href="/purchase/{{ $plan->id }}" class="block w-full py-4 rounded-2xl font-bold transition {{ $loop->index == 1 ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500' : 'bg-gray-800 hover:bg-gray-700' }}">
-                    Começar Agora
-                </a>
+                @endforeach
             </div>
-            @endforeach
+        </div>
+
+        <!-- Com Mídia -->
+        <div>
+            <h2 class="text-2xl font-bold mb-8 text-purple-400">Categoria: Com Mídia (Imagens/PDF)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
+                @foreach($mediaPlans as $plan)
+                <div class="glass border border-gray-800 rounded-3xl p-8 flex flex-col justify-between transition hover:border-purple-500/50 duration-300">
+                    <div>
+                        <h3 class="text-xl font-bold mb-2">{{ $plan->name }}</h3>
+                        <div class="text-4xl font-bold mb-4">R$ {{ number_format($plan->price, 0) }}<span class="text-sm text-gray-500 font-normal">/mês</span></div>
+                        <ul class="space-y-3 mb-8">
+                            <li class="flex items-center text-sm text-gray-300">
+                                <svg class="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>
+                                {{ number_format($plan->message_limit, 0) }} Mensagens + Mídia
+                            </li>
+                            <li class="flex items-center text-sm text-gray-500">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Custo unitário: R$ {{ number_format($plan->price / $plan->message_limit, 2, ',', '.') }}
+                            </li>
+                        </ul>
+                    </div>
+                    <a href="/purchase/{{ $plan->id }}" class="block w-full py-3 text-center rounded-xl font-bold bg-purple-600/20 text-purple-400 border border-purple-500/30 hover:bg-purple-600 hover:text-white transition">Assinar</a>
+                </div>
+                @endforeach
+            </div>
         </div>
     </main>
 </body>

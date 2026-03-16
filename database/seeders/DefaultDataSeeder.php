@@ -10,34 +10,63 @@ class DefaultDataSeeder extends Seeder
 {
     public function run(): void
     {
-        // Default Plans
+        // Default Plans based on User Request
         $plans = [
+            // Categoria: Só Texto
             [
-                'name' => 'Grátis (Teste)',
-                'description' => '10 mensagens para testar a integração da plataforma.',
-                'price' => 0.00,
-                'message_limit' => 10,
-                'duration_days' => 7,
-                'is_active' => true,
-                'type' => 'text',
-            ],
-            [
-                'name' => 'Básico',
-                'description' => 'Ideal para pequenos negócios. 1.000 mensagens/mês.',
-                'price' => 49.90,
-                'message_limit' => 1000,
+                'name' => 'Starter (Texto)',
+                'description' => 'Ideal para quem está começando. Apenas texto.',
+                'price' => 100.00,
+                'message_limit' => 200,
                 'duration_days' => 30,
                 'is_active' => true,
                 'type' => 'text',
             ],
             [
-                'name' => 'Profissional',
-                'description' => 'Disparos ilimitados (999k) e suporte prioritário.',
-                'price' => 149.90,
-                'message_limit' => 999999,
+                'name' => 'Premium (Popular)',
+                'description' => 'O melhor custo-benefício para textos.',
+                'price' => 150.00,
+                'message_limit' => 500,
                 'duration_days' => 30,
                 'is_active' => true,
                 'type' => 'text',
+            ],
+            [
+                'name' => 'Business (Texto)',
+                'description' => 'Para alta demanda de mensagens de texto.',
+                'price' => 200.00,
+                'message_limit' => 1200,
+                'duration_days' => 30,
+                'is_active' => true,
+                'type' => 'text',
+            ],
+            // Categoria: Com Mídia
+            [
+                'name' => 'Starter + Mídia',
+                'description' => 'Envio de textos e arquivos de mídia (Imagens/PDF).',
+                'price' => 180.00,
+                'message_limit' => 200,
+                'duration_days' => 30,
+                'is_active' => true,
+                'type' => 'media',
+            ],
+            [
+                'name' => 'Premium + Mídia',
+                'description' => 'Equilíbrio perfeito para envios com mídia.',
+                'price' => 250.00,
+                'message_limit' => 500,
+                'duration_days' => 30,
+                'is_active' => true,
+                'type' => 'media',
+            ],
+            [
+                'name' => 'Business + Mídia',
+                'description' => 'O plano mais robusto com suporte total a mídia.',
+                'price' => 350.00,
+                'message_limit' => 1200,
+                'duration_days' => 30,
+                'is_active' => true,
+                'type' => 'media',
             ],
         ];
 
