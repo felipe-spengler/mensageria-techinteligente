@@ -28,6 +28,16 @@ class MessageController extends Controller
 
         // Check plan limits (Usage in current month)
         if ($apiKey->plan) {
+            // 1. Check if trying to send Media but plan is only Text
+            if (!empty($request->media) && $apiKey->plan->type !== 'media') {
+                $this->notifyUpgradeForMedia($apiKey);
+                return response()->json([
+                    'error' => 'Your current plan does not support media (Images/PDF). Please upgrade to a Media plan.',
+                    'current_plan' => $apiKey->plan->name
+                ], 403);
+            }
+
+            // 2. Check message limit
             $messageCount = MessageLog::where('api_key_id', $apiKey->id)
                 ->whereMonth('created_at', now()->month)
                 ->count();
@@ -61,6 +71,15 @@ class MessageController extends Controller
             'log_id' => $log->id,
             'remaining' => $apiKey->plan ? (max(0, $apiKey->plan->message_limit - ($messageCount + 1))) : 'unlimited'
         ]);
+    }
+
+    private function notifyUpgradeForMedia($apiKey)
+    {
+        if (!$apiKey->user || !$apiKey->user->phone) return;
+
+        $message = "📸 *Recurso Bloqueado*\n\nIdentificamos uma tentativa de envio de *mídia (arquivo/imagem)*, mas seu plano atual (*{$apiKey->plan->name}*) é restrito a *apenas texto*.\n\nLibere o envio de mídias agora mesmo fazendo um upgrade para a categoria +Mídia!\n\n_Veja os planos aqui: https://mensagens.techinteligente.site/precos_";
+        
+        $this->pushRawToQueue($apiKey->user->wpp_phone, $message);
     }
 
     private function notifyLimitReached($apiKey)
