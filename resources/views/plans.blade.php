@@ -69,131 +69,88 @@
         </header>
 
         @php
-            $textPlans = $plans->where('type', 'text')->sortBy('price');
-            $mediaPlans = $plans->where('type', 'media')->sortBy('price');
+            $tiers = [
+                ['name' => 'Starter', 'limit' => 200, 'text_id' => 1, 'media_id' => 4, 'savings' => ''],
+                ['name' => 'Premium', 'limit' => 500, 'text_id' => 2, 'media_id' => 5, 'savings' => '40% OFF'],
+                ['name' => 'Business', 'limit' => 1200, 'text_id' => 3, 'media_id' => 6, 'savings' => '68% OFF'],
+            ];
+
+            // Map database results to the tiers
+            $planMap = $plans->keyBy('id');
         @endphp
 
-        <!-- Seção: Só Texto -->
-        <section id="planos" class="mb-32">
-            <div class="flex items-center gap-4 mb-12">
-                <div class="h-px flex-1 bg-gray-800"></div>
-                <h2 class="text-3xl font-bold text-blue-400">Categoria: Envios de Texto</h2>
-                <div class="h-px flex-1 bg-gray-800"></div>
-            </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            @foreach($tiers as $index => $tier)
+                @php
+                    $textPlan = $plans->filter(fn($p) => str_starts_with($p->name, $tier['name']) && $p->type === 'text')->first();
+                    $mediaPlan = $plans->filter(fn($p) => str_starts_with($p->name, $tier['name']) && $p->type === 'media')->first();
+                @endphp
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                @foreach($textPlans as $index => $plan)
-                <div class="group relative {{ $index == 2 ? 'animate-float' : '' }}">
+                <div class="group relative {{ $index == 1 ? 'animate-float' : '' }}">
                     @if($index == 1)
-                        <div class="absolute -top-4 left-1/2 -translate-x-1/2 popular-badge px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter z-20">Mais Popular</div>
-                    @elseif($index == 2)
-                        <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-pink-600 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter z-20">Melhor Valor</div>
+                        <div class="absolute -top-4 left-1/2 -translate-x-1/2 popular-badge px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest z-20 shadow-xl shadow-blue-500/20">Mais Vendido</div>
                     @endif
                     
-                    <div class="glass {{ $index == 2 ? 'border-2 border-pink-500/50' : 'border border-gray-800' }} rounded-[2rem] p-8 h-full flex flex-col transition-all duration-500 hover:bg-white/5">
-                        <h3 class="text-xl font-bold mb-1 text-gray-300">{{ $plan->name }}</h3>
-                        <p class="text-xs text-gray-500 mb-6 font-medium">Até {{ number_format($plan->message_limit, 0) }} envios/mês</p>
-                        
-                        <div class="mb-8">
-                            <span class="text-5xl font-black">R$ {{ number_format($plan->price, 0) }}</span>
-                            <span class="text-gray-500 text-sm">/mês</span>
-                        </div>
-
-                        <div class="bg-white/5 rounded-2xl p-4 mb-8 border border-white/10">
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs text-gray-400">Custo por mensagem</span>
-                                <span class="text-sm font-bold text-green-400">R$ {{ number_format($plan->price / $plan->message_limit, 2, ',', '.') }}</span>
+                    <div class="glass {{ $index == 1 ? 'border-2 border-blue-500/50 bg-blue-500/5' : 'border border-gray-800' }} rounded-[2.5rem] p-8 h-full flex flex-col transition-all duration-500 hover:border-gray-600">
+                        <div class="mb-6">
+                            <h3 class="text-2xl font-black mb-1 text-white">{{ $tier['name'] }}</h3>
+                            <div class="flex items-center gap-2">
+                                <span class="bg-white/10 px-2 py-0.5 rounded text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ number_format($tier['limit'], 0) }} Mensagens/mês</span>
+                                @if($tier['savings'])
+                                    <span class="text-[10px] font-black text-green-400 uppercase tracking-widest">{{ $tier['savings'] }}</span>
+                                @endif
                             </div>
-                            @if($index > 0)
-                                <div class="text-[10px] text-blue-400 font-bold uppercase tracking-tight">
-                                    📉 {{ $index == 1 ? '40% mais barato que Starter' : '68% mais barato que Starter' }}
-                                </div>
-                            @endif
                         </div>
 
-                        <ul class="space-y-4 mb-10 flex-1">
-                            <li class="flex items-center gap-3 text-sm text-gray-400">
-                                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                API Key Instantânea
+                        <!-- Opção: Só Texto -->
+                        <div class="mb-8 p-5 rounded-3xl bg-white/5 border border-white/5 hover:bg-white/10 transition group/item relative">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h4 class="text-xs font-black text-blue-400 uppercase tracking-widest mb-1">Apenas Texto</h4>
+                                    <p class="text-[10px] text-gray-500 italic">Ideal para avisos e notificações simples.</p>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-black">R$ {{ number_format($textPlan->price ?? 0, 0) }}</div>
+                                    <div class="text-[10px] text-gray-400">R$ {{ number_format(($textPlan->price ?? 0) / $tier['limit'], 2, ',', '.') }}/msg</div>
+                                </div>
+                            </div>
+                            <a href="/purchase/{{ $textPlan->id ?? '#' }}" class="block w-full py-3 rounded-xl text-center text-xs font-black bg-white/5 hover:bg-blue-600 transition-all duration-300 border border-white/10 hover:border-blue-500">ASSINAR SÓ TEXTO</a>
+                        </div>
+
+                        <!-- Opção: Com Mídia -->
+                        <div class="p-5 rounded-3xl bg-gradient-to-br from-purple-600/10 to-transparent border border-purple-500/20 hover:border-purple-500/50 transition shadow-2xl shadow-purple-900/10 relative">
+                             <div class="absolute -top-2 right-4 bg-purple-600 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest">Premium Choice</div>
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h4 class="text-xs font-black text-purple-400 uppercase tracking-widest mb-1">Texto + Mídia</h4>
+                                    <p class="text-[10px] text-gray-500 italic">Arquivos, Imagens e PDFs via API.</p>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-black text-white">R$ {{ number_format($mediaPlan->price ?? 0, 0) }}</div>
+                                    <div class="text-[10px] text-gray-400">R$ {{ number_format(($mediaPlan->price ?? 0) / $tier['limit'], 2, ',', '.') }}/msg</div>
+                                </div>
+                            </div>
+                            <a href="/purchase/{{ $mediaPlan->id ?? '#' }}" class="block w-full py-3 rounded-xl text-center text-xs font-black bg-purple-600 hover:bg-purple-500 transition-all duration-300 shadow-lg shadow-purple-600/20">ASSINAR COM MÍDIA</a>
+                        </div>
+
+                        <ul class="mt-10 space-y-3 flex-1 px-2">
+                            <li class="flex items-center gap-3 text-[11px] text-gray-400">
+                                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                Setup instantâneo via API
                             </li>
-                            <li class="flex items-center gap-3 text-sm text-gray-400">
-                                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                Relatórios em Tempo Real
+                            <li class="flex items-center gap-3 text-[11px] text-gray-400">
+                                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                Webhooks de status em tempo real
                             </li>
-                            <li class="flex items-center gap-3 text-sm text-gray-400">
-                                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                Suporte via E-mail
+                            <li class="flex items-center gap-3 text-[11px] text-gray-400">
+                                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                Dashboard de consumo completo
                             </li>
                         </ul>
-
-                        <a href="/purchase/{{ $plan->id }}" class="w-full py-4 rounded-xl text-center font-bold text-sm transition-all duration-300 {{ $index == 1 ? 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/20' : ($index == 2 ? 'bg-pink-600 hover:bg-pink-500 shadow-lg shadow-pink-600/20' : 'bg-gray-800 hover:bg-gray-700') }}">
-                            Assinar Agora
-                        </a>
                     </div>
                 </div>
-                @endforeach
-            </div>
-        </section>
-
-        <!-- Seção: Com Mídia -->
-        <section>
-            <div class="flex items-center gap-4 mb-12">
-                <div class="h-px flex-1 bg-gray-800"></div>
-                <h2 class="text-3xl font-bold text-purple-400">Categoria: Envios + Mídia (Imagens/PDF)</h2>
-                <div class="h-px flex-1 bg-gray-800"></div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                @foreach($mediaPlans as $index => $plan)
-                <div class="group relative">
-                    @if($index == 2)
-                        <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-600 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter z-20">Recomendado Corporativo</div>
-                    @endif
-                    
-                    <div class="glass border border-gray-800 rounded-[2rem] p-8 h-full flex flex-col transition-all duration-500 hover:bg-white/5">
-                        <h3 class="text-xl font-bold mb-1 text-gray-300">{{ $plan->name }}</h3>
-                        <p class="text-xs text-gray-500 mb-6 font-medium">Misture texto, imagens e documentos</p>
-                        
-                        <div class="mb-8">
-                            <span class="text-5xl font-black">R$ {{ number_format($plan->price, 0) }}</span>
-                            <span class="text-gray-500 text-sm">/mês</span>
-                        </div>
-
-                        <div class="bg-white/5 rounded-2xl p-4 mb-8 border border-white/10">
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs text-gray-400">Custo por envio</span>
-                                <span class="text-sm font-bold text-purple-400">R$ {{ number_format($plan->price / $plan->message_limit, 2, ',', '.') }}</span>
-                            </div>
-                            @if($index > 0)
-                                <div class="text-[10px] text-purple-400 font-bold uppercase tracking-tight">
-                                    📉 {{ $index == 1 ? '44% de economia' : '67% de economia' }}
-                                </div>
-                            @endif
-                        </div>
-
-                        <ul class="space-y-4 mb-10 flex-1">
-                            <li class="flex items-center gap-3 text-sm text-gray-400">
-                                <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                Upload de Arquivos via Base64
-                            </li>
-                            <li class="flex items-center gap-3 text-sm text-gray-400">
-                                <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                Visualização de Mídia no Log
-                            </li>
-                            <li class="flex items-center gap-3 text-sm text-gray-400">
-                                <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                Suporte Prioritário 24/7
-                            </li>
-                        </ul>
-
-                        <a href="/purchase/{{ $plan->id }}" class="w-full py-4 rounded-xl text-center font-bold text-sm bg-purple-600 hover:bg-purple-500 transition-all duration-300 shadow-lg shadow-purple-600/20">
-                            Assinar Categoria Mídia
-                        </a>
-                    </div>
-                </div>
-                @endforeach
-            </div>
-        </section>
+            @endforeach
+        </div>
     </main>
 
     <footer class="relative z-10 py-12 border-t border-gray-900 text-center text-gray-600 text-xs">
