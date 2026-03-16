@@ -13,8 +13,10 @@ use App\Filament\Resources\PlanResource\Pages;
 class PlanResource extends Resource
 {
     protected static ?string $model = Plan::class;
-    protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
-    protected static ?string $navigationLabel = 'Planos';
+    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationLabel = 'Planos e Assinaturas';
+    protected static ?string $modelLabel = 'Plano';
+    protected static ?string $pluralModelLabel = 'Planos';
 
     public static function form(Form $form): Form
     {

@@ -15,7 +15,9 @@ class ApiKeyResource extends Resource
 {
     protected static ?string $model = ApiKey::class;
     protected static ?string $navigationIcon = 'heroicon-o-key';
-    protected static ?string $navigationLabel = 'Chaves de API';
+    protected static ?string $navigationLabel = 'Pagamentos & API';
+    protected static ?string $modelLabel = 'Chave de API';
+    protected static ?string $pluralModelLabel = 'Pagamentos & API';
 
     public static function form(Form $form): Form
     {

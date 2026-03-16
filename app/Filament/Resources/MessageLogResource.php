@@ -13,8 +13,10 @@ use App\Filament\Resources\MessageLogResource\Pages;
 class MessageLogResource extends Resource
 {
     protected static ?string $model = MessageLog::class;
-    protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
-    protected static ?string $navigationLabel = 'Logs de Mensagens';
+    protected static ?string $navigationIcon = 'heroicon-o-paper-airplane';
+    protected static ?string $navigationLabel = 'Relatório de Envios';
+    protected static ?string $modelLabel = 'Log de Envio';
+    protected static ?string $pluralModelLabel = 'Relatório de Envios';
 
     public static function table(Table $table): Table
     {

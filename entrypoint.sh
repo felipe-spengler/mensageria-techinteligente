@@ -17,7 +17,7 @@ if [ -f /var/www/html/database/database.sqlite ]; then
 fi
 
 # Run migrations if database is ready
-php artisan migrate --force
+php artisan migrate --force --seed
 
 # Publish Filament assets to fix 404s
 php artisan filament:assets
