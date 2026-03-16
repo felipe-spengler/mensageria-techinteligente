@@ -62,6 +62,9 @@ RUN mkdir -p storage/framework/cache/data \
              storage/logs \
              bootstrap/cache
 
+# Ensure database file exists for SQLite
+RUN touch database/database.sqlite
+
 # Generate the autoloader without running scripts (avoids database connection issues during build)
 RUN composer dump-autoload --optimize --no-scripts
 
