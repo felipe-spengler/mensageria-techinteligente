@@ -6,13 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: mensageria-app
     restart: always
-    environment:
-      - APP_ENV=production
-      - APP_DEBUG=false
-    networks:
-      - mensageria-network
     depends_on:
       - redis
 
@@ -21,12 +15,7 @@ services:
     build:
       context: ./bridge
       dockerfile: Dockerfile
-    image: mensageria-bridge
     restart: always
-    environment:
-      - REDIS_URL=redis://redis:6379
-    networks:
-      - mensageria-network
     depends_on:
       - redis
 
@@ -34,9 +23,3 @@ services:
   redis:
     image: redis:alpine
     restart: always
-    networks:
-      - mensageria-network
-
-networks:
-  mensageria-network:
-    driver: bridge
