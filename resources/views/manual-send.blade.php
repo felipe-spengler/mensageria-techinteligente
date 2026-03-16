@@ -45,8 +45,13 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-400 mb-1">Imagem/Mídia (Link)</label>
-                <input type="text" id="media" placeholder="Opcional: link da imagem" class="w-full bg-gray-700 border-none rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                <label class="block text-sm font-medium text-gray-400 mb-1">Imagem/Mídia (Upload)</label>
+                <input type="file" id="mediaFile" accept="image/*" class="w-full bg-gray-700 border-none rounded-lg p-2 text-white focus:ring-2 focus:ring-blue-500 outline-none text-xs file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700">
+                <input type="hidden" id="mediaBase64">
+                <div id="imagePreview" class="hidden mt-2 border border-gray-600 rounded-lg overflow-hidden max-h-32 bg-black flex items-center justify-center relative">
+                    <img src="" id="previewImg" class="max-h-32">
+                    <button type="button" onclick="clearMedia()" class="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 text-[10px]">✕</button>
+                </div>
             </div>
 
             <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition duration-200">
@@ -98,12 +103,36 @@
             textarea.setSelectionRange(start + emoji.length, start + emoji.length);
         }
 
+        document.getElementById('mediaFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const base64 = event.target.result;
+                document.getElementById('mediaBase64').value = base64;
+                document.getElementById('previewImg').src = base64;
+                document.getElementById('imagePreview').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function clearMedia() {
+            document.getElementById('mediaFile').value = '';
+            document.getElementById('mediaBase64').value = '';
+            document.getElementById('imagePreview').classList.add('hidden');
+        }
+
         document.getElementById('sendForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Processando...';
+
             const data = {
                 to: document.getElementById('to').value,
                 message: document.getElementById('message').value,
-                media: document.getElementById('media').value,
+                media: document.getElementById('mediaBase64').value,
             };
 
             const response = await fetch('/manual-send', {

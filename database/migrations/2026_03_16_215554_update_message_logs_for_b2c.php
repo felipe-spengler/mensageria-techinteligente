@@ -15,7 +15,17 @@ return new class extends Migration
             $table->foreignId('api_key_id')->nullable()->change();
             $table->string('ip_address', 45)->nullable()->index();
             $table->boolean('is_free')->default(false);
+            $table->longText('media_url')->nullable()->change();
         });
+
+        // Create a default admin user if not exists
+        if (!\App\Models\User::where('email', 'admin@admin.com')->exists()) {
+            \App\Models\User::create([
+                'name' => 'Admin',
+                'email' => 'admin@admin.com',
+                'password' => \Illuminate\Support\Facades\Hash::make('admin123'),
+            ]);
+        }
     }
 
     public function down(): void

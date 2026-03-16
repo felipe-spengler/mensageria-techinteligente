@@ -19,5 +19,8 @@ fi
 # Run migrations if database is ready
 php artisan migrate --force
 
+# Publish Filament assets to fix 404s
+php artisan filament:assets
+
 # Start Apache in foreground
 apache2-foreground
