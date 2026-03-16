@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ApiKey;
 use App\Models\MessageLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class MessageController extends Controller
@@ -15,29 +16,25 @@ class MessageController extends Controller
         $validator = Validator::make($request->all(), [
             'to' => 'required|string',
             'message' => 'required|string',
-            'media' => 'nullable|string', // Can be URL or Base64
+            'media' => 'nullable|string', 
         ]);
 
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()], 422);
         }
 
-        $apiKeyHeader = $request->header('Authorization');
-        if (!$apiKeyHeader || !str_starts_with($apiKeyHeader, 'Bearer ')) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
+        // Get API Key from Middleware
+        $apiKey = $request->attributes->get('api_key');
 
-        $key = str_replace('Bearer ', '', $apiKeyHeader);
-        $apiKey = ApiKey::where('key', $key)->where('status', 'active')->first();
+        // Check plan limits (Usage in current month)
+        if ($apiKey->plan) {
+            $messageCount = MessageLog::where('api_key_id', $apiKey->id)
+                ->whereMonth('created_at', now()->month)
+                ->count();
 
-        if (!$apiKey) {
-            return response()->json(['error' => 'Invalid or inactive API Key'], 401);
-        }
-
-        // Check plan limits (simple count for now)
-        $messageCount = $apiKey->messageLogs()->whereMonth('created_at', now()->month)->count();
-        if ($messageCount >= $apiKey->plan->message_limit) {
-            return response()->json(['error' => 'Plan limit reached'], 403);
+            if ($apiKey->plan->message_limit > 0 && $messageCount >= $apiKey->plan->message_limit) {
+                return response()->json(['error' => 'Message limit reached for your plan.'], 403);
+            }
         }
 
         // Create log entry
@@ -49,12 +46,29 @@ class MessageController extends Controller
             'status' => 'queued',
         ]);
 
-        // TODO: Dispatch to Redis/SQS for Node.js worker to pick up
+        // Push to Redis for Node.js worker
+        $this->pushToQueue($log);
 
         return response()->json([
             'success' => true,
             'message' => 'Message queued successfully',
-            'log_id' => $log->id
+            'log_id' => $log->id,
+            'remaining' => $apiKey->plan ? (max(0, $apiKey->plan->message_limit - ($messageCount + 1))) : 'unlimited'
         ]);
+    }
+
+    private function pushToQueue($log)
+    {
+        try {
+            $redis = \Illuminate\Support\Facades\Redis::connection();
+            $redis->rpush('wpp_messages', json_encode([
+                'log_id' => $log->id,
+                'to' => $log->to,
+                'message' => $log->message,
+                'media' => $log->media_url,
+            ]));
+        } catch (\Exception $e) {
+            Log::error('Redis Error: ' . $e->getMessage());
+        }
     }
 }

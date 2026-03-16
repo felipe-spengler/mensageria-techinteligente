@@ -12,6 +12,9 @@ class Plan extends Model
         'message_limit',
         'type',
         'price',
+        'description',
+        'duration_days',
+        'is_active',
     ];
 
     public function apiKeys(): HasMany
