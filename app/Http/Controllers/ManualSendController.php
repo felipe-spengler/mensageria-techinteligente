@@ -119,7 +119,7 @@ class ManualSendController extends Controller
                 'media' => $log->media_url,
             ]));
         } catch (\Exception $e) {
-            \Log::error('Erro ao enviar para o Redis: ' . $e->getMessage());
+            Log::error('Erro ao enviar para o Redis: ' . $e->getMessage());
         }
     }
 }

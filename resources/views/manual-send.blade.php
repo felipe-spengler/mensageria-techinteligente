@@ -28,7 +28,20 @@
 
             <div>
                 <label class="block text-sm font-medium text-gray-400 mb-1">Mensagem</label>
-                <textarea id="message" rows="4" placeholder="Sua mensagem aqui..." class="w-full bg-gray-700 border-none rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                <div class="bg-gray-700 rounded-lg overflow-hidden border border-gray-600 focus-within:ring-2 focus-within:ring-blue-500">
+                    <div class="flex items-center space-x-2 p-2 bg-gray-750 border-b border-gray-600">
+                        <button type="button" onclick="insertFormat('*')" title="Negrito" class="p-1 hover:bg-gray-600 rounded text-xs font-bold w-8">B</button>
+                        <button type="button" onclick="insertFormat('_')" title="Itálico" class="p-1 hover:bg-gray-600 rounded text-xs italic w-8">I</button>
+                        <button type="button" onclick="insertFormat('~')" title="Tachado" class="p-1 hover:bg-gray-600 rounded text-xs line-through w-8">S</button>
+                        <div class="h-4 w-px bg-gray-600 mx-1"></div>
+                        <button type="button" onclick="insertEmoji('🚀')" class="p-1 hover:bg-gray-600 rounded text-xs">🚀</button>
+                        <button type="button" onclick="insertEmoji('✅')" class="p-1 hover:bg-gray-600 rounded text-xs">✅</button>
+                        <button type="button" onclick="insertEmoji('👋')" class="p-1 hover:bg-gray-600 rounded text-xs">👋</button>
+                        <button type="button" onclick="insertEmoji('⭐')" class="p-1 hover:bg-gray-600 rounded text-xs">⭐</button>
+                    </div>
+                    <textarea id="message" rows="4" placeholder="Sua mensagem aqui..." class="w-full bg-transparent border-none p-3 text-white outline-none resize-none"></textarea>
+                </div>
+                <p class="text-[10px] text-gray-500 mt-1">Dica: Use *texto* para negrito e _texto_ para itálico.</p>
             </div>
 
             <div>
@@ -62,6 +75,29 @@
     </div>
 
     <script>
+        function insertFormat(char) {
+            const textarea = document.getElementById('message');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            const selected = text.substring(start, end);
+            
+            textarea.value = text.substring(0, start) + char + selected + char + text.substring(end);
+            textarea.focus();
+            textarea.setSelectionRange(start + 1, end + 1);
+        }
+
+        function insertEmoji(emoji) {
+            const textarea = document.getElementById('message');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            
+            textarea.value = text.substring(0, start) + emoji + text.substring(end);
+            textarea.focus();
+            textarea.setSelectionRange(start + emoji.length, start + emoji.length);
+        }
+
         document.getElementById('sendForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const data = {
