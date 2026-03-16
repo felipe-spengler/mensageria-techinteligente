@@ -9,6 +9,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
+use App\Filament\Resources\ApiKeyResource\Pages;
 
 class ApiKeyResource extends Resource
 {
