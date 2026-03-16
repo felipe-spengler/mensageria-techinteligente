@@ -54,8 +54,16 @@ COPY . /var/www/html
 # Build assets
 RUN npm run build
 
-# Generate the autoloader and run discovery scripts now that code is present
-RUN composer dump-autoload --optimize
+# Ensure storage and bootstrap/cache directories exist
+RUN mkdir -p storage/framework/cache/data \
+             storage/framework/sessions \
+             storage/framework/testing \
+             storage/framework/views \
+             storage/logs \
+             bootstrap/cache
+
+# Generate the autoloader without running scripts (avoids database connection issues during build)
+RUN composer dump-autoload --optimize --no-scripts
 
 # Fix permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
