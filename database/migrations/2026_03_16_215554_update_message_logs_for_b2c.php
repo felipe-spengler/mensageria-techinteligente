@@ -23,7 +23,7 @@ return new class extends Migration
             \App\Models\User::create([
                 'name' => 'Admin',
                 'email' => 'admin@admin.com',
-                'password' => \Illuminate\Support\Facades\Hash::make('admin123'),
+                'password' => \Illuminate\Support\Facades\Hash::make('teste123'),
             ]);
         }
     }
