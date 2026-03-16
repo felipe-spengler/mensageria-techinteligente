@@ -15,7 +15,8 @@ async function start() {
         useChrome: true,
         puppeteerOptions: {
             args: ['--no-sandbox', '--disable-setuid-sandbox']
-        }
+        },
+        autoClose: false
     });
 
     console.log('WhatsApp Bridge Started!');

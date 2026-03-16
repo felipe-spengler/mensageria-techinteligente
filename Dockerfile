@@ -69,7 +69,7 @@ RUN touch database/database.sqlite
 RUN composer dump-autoload --optimize --no-scripts
 
 # Fix permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database
 
 # Expose port 80
 EXPOSE 80
