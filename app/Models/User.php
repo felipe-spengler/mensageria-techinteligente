@@ -29,8 +29,14 @@ class User extends Authenticatable implements FilamentUser
     protected $fillable = [
         'name',
         'email',
+        'phone',
         'password',
     ];
+
+    public function getWppPhoneAttribute()
+    {
+        return preg_replace('/[^0-9]/', '', $this->phone);
+    }
 
     /**
      * The attributes that should be hidden for serialization.

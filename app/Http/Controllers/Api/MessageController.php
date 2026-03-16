@@ -33,7 +33,13 @@ class MessageController extends Controller
                 ->count();
 
             if ($apiKey->plan->message_limit > 0 && $messageCount >= $apiKey->plan->message_limit) {
+                $this->notifyLimitReached($apiKey);
                 return response()->json(['error' => 'Message limit reached for your plan.'], 403);
+            }
+
+            // Alert at 90% usage
+            if ($apiKey->plan->message_limit > 0 && $messageCount == floor($apiKey->plan->message_limit * 0.9)) {
+                $this->notifyLimitWarning($apiKey, $messageCount);
             }
         }
 
@@ -55,6 +61,38 @@ class MessageController extends Controller
             'log_id' => $log->id,
             'remaining' => $apiKey->plan ? (max(0, $apiKey->plan->message_limit - ($messageCount + 1))) : 'unlimited'
         ]);
+    }
+
+    private function notifyLimitReached($apiKey)
+    {
+        if (!$apiKey->user || !$apiKey->user->phone) return;
+
+        $message = "⚠️ *Aviso TechInteligente*\n\nSeu limite de mensagens para o plano *{$apiKey->plan->name}* foi atingido (100%).\n\nNovos disparos via API serão bloqueados até a renovação ou upgrade.\n\n_Acesse o painel para gerenciar sua assinatura._";
+        
+        $this->pushRawToQueue($apiKey->user->wpp_phone, $message);
+    }
+
+    private function notifyLimitWarning($apiKey, $count)
+    {
+        if (!$apiKey->user || !$apiKey->user->phone) return;
+
+        $message = "📢 *Aviso de Uso*\n\nVocê já utilizou *{$count}* mensagens este mês. Isso representa *90%* do seu limite no plano *{$apiKey->plan->name}*.\n\nGaranta que seu serviço não seja interrompido fazendo um upgrade agora!";
+        
+        $this->pushRawToQueue($apiKey->user->wpp_phone, $message);
+    }
+
+    private function pushRawToQueue($to, $message)
+    {
+        try {
+            $redis = \Illuminate\Support\Facades\Redis::connection();
+            $redis->rpush('wpp_messages', json_encode([
+                'to' => $to,
+                'message' => $message,
+                'is_system_notification' => true
+            ]));
+        } catch (\Exception $e) {
+            Log::error('Notification Redis Error: ' . $e->getMessage());
+        }
     }
 
     private function pushToQueue($log)

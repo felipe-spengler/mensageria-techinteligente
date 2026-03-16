@@ -10,6 +10,7 @@ Route::get('/pix/status/{txid}', [ManualSendController::class, 'checkStatus']);
 
 Route::get('/precos', [\App\Http\Controllers\PlanController::class, 'index']);
 Route::get('/purchase/{id}', [\App\Http\Controllers\PlanController::class, 'purchase']);
+Route::post('/purchase', [\App\Http\Controllers\PlanController::class, 'processPurchase']);
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/admin/bridge/qrcode', [ManualSendController::class, 'getBridgeQrCode']);
