@@ -109,41 +109,64 @@ class ManualSendController extends Controller
         ]);
     }
 
+    private function buildBridgeUrls(): array
+    {
+        $urls = [
+            env('WPP_BRIDGE_URL'),
+            'http://bridge:3000',
+            'http://127.0.0.1:3000',
+            'http://localhost:3000',
+        ];
+
+        return array_values(array_filter($urls));
+    }
+
+    private function requestBridge(string $path)
+    {
+        $lastError = null;
+
+        foreach ($this->buildBridgeUrls() as $base) {
+            $url = rtrim($base, '/') . '/' . ltrim($path, '/');
+            try {
+                $response = Http::timeout(5)->get($url);
+                if ($response->successful()) {
+                    return [$response, $url];
+                }
+
+                $lastError = "HTTP " . $response->status();
+            } catch (\Exception $e) {
+                $lastError = $e->getMessage();
+            }
+
+            \Illuminate\Support\Facades\Log::warning("Bridge request failed [{$path}] {$url}: {$lastError}");
+        }
+
+        throw new \RuntimeException('Bridge unreachable: ' . ($lastError ?: 'no URLs available'));
+    }
+
     public function getBridgeQrCode()
     {
-        $url = env('WPP_BRIDGE_URL', 'http://bridge:3000') . '/qrcode';
         try {
-            $response = Http::timeout(5)->get($url);
-            if ($response->successful()) {
-                return response($response->body(), 200)
-                    ->header('Content-Type', 'image/png');
-            }
-            throw new \Exception("Bridge returned status " . $response->status());
+            [$response, $url] = $this->requestBridge('qrcode');
+            return response($response->body(), 200)
+                ->header('Content-Type', 'image/png');
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("QR Code Error [URL: $url]: " . $e->getMessage());
-            return response('Bridge offline or unreachable: ' . $e->getMessage() . ' (URL: ' . $url . ')', 503);
+            \Illuminate\Support\Facades\Log::error('QR Code Error: ' . $e->getMessage());
+            return response('Bridge offline or unreachable: ' . $e->getMessage(), 503);
         }
     }
 
     public function getBridgeStatus()
     {
-        $url = env('WPP_BRIDGE_URL', 'http://bridge:3000') . '/status';
         try {
-            $response = Http::timeout(5)->get($url);
-            if ($response->successful()) {
-                return response()->json($response->json());
-            }
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Bridge returned status ' . $response->status(),
-                'url' => $url
-            ], 503);
+            [$response, $url] = $this->requestBridge('status');
+            return response()->json($response->json());
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Status Error [URL: $url]: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Status Error: ' . $e->getMessage());
             return response()->json([
                 'status' => 'offline',
                 'error' => $e->getMessage(),
-                'url' => $url
+                'url' => env('WPP_BRIDGE_URL', 'http://bridge:3000') . '/status'
             ], 503);
         }
     }
