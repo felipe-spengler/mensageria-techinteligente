@@ -1,6 +1,12 @@
 Projeto: SaaS_Wpp (API de Mensagens)
 Este documento descreve o funcionamento interno do serviço de envio de mensagens via WhatsApp, projetado para rodar em ambiente Linux (VPS) e atuar como um provedor independente para sistemas externos.
 
+⚠️ AMBIENTE FIXO: VPS + COOLIFY
+- Deploy em Linux VPS (Ubuntu/Debian) usando Coolify.
+- Traefik gerencia os ingressos, mas a conexão interna de `app` para `bridge` deve ser feita via DNS do docker-compose (`bridge:3000`).
+- Não mude para `http://<nome_app_publico>` em `WPP_BRIDGE_URL`, isso quebrará a rede interna.
+- Ajuste em: `.env` ou variáveis de ambiente da app no Coolify.
+
 🏗️ Arquitetura Técnica
 1. Ambiente
 OS: Linux (Ubuntu/Debian recomendado na VPS).

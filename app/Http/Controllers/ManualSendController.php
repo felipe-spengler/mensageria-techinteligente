@@ -21,62 +21,74 @@ class ManualSendController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'to' => 'required|string', // Pode ser CSV
-            'message' => 'required',
-            'media' => 'nullable|string',
-        ]);
-
-        $ip = $request->ip();
-        $hasUsedFree = MessageLog::where('ip_address', $ip)->where('is_free', true)->exists();
-        
-        $recipients = explode(',', $request->to);
-        $recipients = array_map('trim', $recipients);
-        $recipients = array_filter($recipients);
-
-        // Se for teste grátis (apenas 1 número)
-        if (!$hasUsedFree && count($recipients) === 1) {
-            $log = MessageLog::create([
-                'to' => $recipients[0],
-                'message' => $request->message,
-                'media_url' => $request->media,
-                'status' => 'queued',
-                'ip_address' => $ip,
-                'is_free' => true,
+        try {
+            $request->validate([
+                'to' => 'required|string', // Pode ser CSV
+                'message' => 'required',
+                'media' => 'nullable|string',
             ]);
 
-            $this->pushToQueue($log);
+            $ip = $request->ip();
+            $hasUsedFree = MessageLog::where('ip_address', $ip)->where('is_free', true)->exists();
+            
+            $recipients = explode(',', $request->to);
+            $recipients = array_map('trim', $recipients);
+            $recipients = array_filter($recipients);
+
+            if (count($recipients) === 0) {
+                return response()->json(['success' => false, 'message' => 'Nenhum destinatário válido informado.'], 422);
+            }
+
+            // Se for teste grátis (apenas 1 número)
+            if (!$hasUsedFree && count($recipients) === 1) {
+                $log = MessageLog::create([
+                    'to' => $recipients[0],
+                    'message' => $request->message,
+                    'media_url' => $request->media,
+                    'status' => 'queued',
+                    'ip_address' => $ip,
+                    'is_free' => true,
+                ]);
+
+                $this->pushToQueue($log);
+
+                return response()->json([
+                    'success' => true,
+                    'type' => 'free',
+                    'message' => 'Mensagem de teste enviada com sucesso!'
+                ]);
+            }
+
+            // Caso contrário, gerar PIX de R$ 5,00 (pacote de 5 envios)
+            $txid = Str::random(20);
+            $amount = 5.00; 
+
+            $transaction = PixTransaction::create([
+                'amount' => $amount,
+                'status' => 'pending',
+                'txid' => $txid,
+                'metadata' => [
+                    'recipients' => $recipients,
+                    'message' => $request->message,
+                    'media' => $request->media,
+                    'ip_address' => $ip,
+                ]
+            ]);
 
             return response()->json([
                 'success' => true,
-                'type' => 'free',
-                'message' => 'Mensagem de teste enviada com sucesso!'
+                'type' => 'paid',
+                'pix_code' => '00020126580014br.gov.bcb.pix...', // Mock PIX code
+                'txid' => $txid,
+                'transaction_id' => $transaction->id
             ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([ 'success' => false, 'message' => 'Dados inválidos', 'errors' => $e->errors() ], 422);
+        } catch (\Exception $e) {
+            Log::error('Manual send error: ' . $e->getMessage());
+            return response()->json([ 'success' => false, 'message' => 'Erro interno no servidor: ' . $e->getMessage() ], 500);
         }
-
-        // Caso contrário, gerar PIX de R$ 5,00 (pacote de 5 envios)
-        $txid = Str::random(20);
-        $amount = 5.00; 
-
-        $transaction = PixTransaction::create([
-            'amount' => $amount,
-            'status' => 'pending',
-            'txid' => $txid,
-            'metadata' => [
-                'recipients' => $recipients,
-                'message' => $request->message,
-                'media' => $request->media,
-                'ip_address' => $ip,
-            ]
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'type' => 'paid',
-            'pix_code' => '00020126580014br.gov.bcb.pix...', // Mock PIX code
-            'txid' => $txid,
-            'transaction_id' => $transaction->id
-        ]);
     }
 
     public function checkStatus($txid)

@@ -104,8 +104,14 @@ app.get('/qrcode', (req, res) => {
 });
 
 app.get('/status', (req, res) => {
+    let status = (connectionStatus || '').toString().toLowerCase();
+
+    if (status === 'islogged' || status === 'logged' || status === 'authenticated') {
+        status = 'connected';
+    }
+
     res.json({
-        status: connectionStatus,
+        status,
         has_client: !!whatsappClient,
         timestamp: new Date().toISOString()
     });

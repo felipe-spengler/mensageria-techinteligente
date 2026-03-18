@@ -90,6 +90,7 @@
                 </div>
 
                 <form id="sendForm" class="space-y-6">
+                    <div id="errorMsg" class="hidden text-red-400 text-sm p-3 bg-red-500/10 border border-red-500/20 rounded-lg"></div>
                     <div>
                         <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Destinatário(s)</label>
                         <input type="text" id="to" placeholder="Ex: 5545999999999 (com DDD e 55)" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition">
@@ -193,20 +194,34 @@
         document.getElementById('sendForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
+            const errorMsg = document.getElementById('errorMsg');
+            errorMsg.classList.add('hidden');
+            errorMsg.innerText = '';
             btn.disabled = true; btn.innerHTML = 'Enviando...';
 
-            const resp = await fetch('/manual-send', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: JSON.stringify({
-                    to: document.getElementById('to').value,
-                    message: document.getElementById('message').value,
-                    media: document.getElementById('mediaBase64').value
-                })
-            });
+            try {
+                const resp = await fetch('/manual-send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    body: JSON.stringify({
+                        to: document.getElementById('to').value,
+                        message: document.getElementById('message').value,
+                        media: document.getElementById('mediaBase64').value
+                    })
+                });
 
-            const res = await resp.json();
-            if (res.success) {
+                let res;
+                try {
+                    res = await resp.json();
+                } catch (jsonError) {
+                    throw new Error('Resposta inválida do servidor, tente novamente.');
+                }
+
+                if (!resp.ok || !res.success) {
+                    const msg = res?.message || 'Erro ao enviar: status ' + resp.status;
+                    throw new Error(msg);
+                }
+
                 document.getElementById('sendForm').classList.add('hidden');
                 if (res.type === 'free') {
                     document.getElementById('successMsg').classList.remove('hidden');
@@ -214,6 +229,12 @@
                     document.getElementById('pixContainer').classList.remove('hidden');
                     startPolling(res.txid);
                 }
+            } catch (error) {
+                errorMsg.innerText = error.message;
+                errorMsg.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Enviar Mensagem';
             }
         });
 

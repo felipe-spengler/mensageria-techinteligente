@@ -1,6 +1,12 @@
 Guia de Integração: Integra_SaaS (WhatsApp API)
 Este documento orienta como integrar qualquer sistema (incluindo seu App Esportivo) à API de envio de WhatsApp.
 
+⚠️ OBSERVAÇÃO DE EXECUÇÃO: VPS + Coolify + Traefik
+- Este projeto é executado em VPS e gerenciado por Coolify (Traefik).
+- O bridge WhatsApp permanece interno entre containers (`app` ↔ `bridge`) e não precisa ser exposto publicamente.
+- Variável obrigatória: `WPP_BRIDGE_URL=http://bridge:3000` no ambiente do app.
+- Use o mesmo stack/docker-compose network para `app`, `bridge`, `redis`.
+
 🔑 Autenticação
 Todas as requisições devem incluir a sua API_KEY no cabeçalho HTTP.
 

@@ -45,21 +45,45 @@
     </div>
 
     <script>
+        const qrcodeContainer = document.getElementById('qrcode-container');
+        const statusBadge = document.getElementById('status-badge');
+
+        function setStatus(status, isConnected) {
+            statusBadge.innerHTML = status;
+            statusBadge.className = isConnected
+                ? 'px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider bg-green-500/20 text-green-500 border border-green-500/30'
+                : 'px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/20 text-red-500 border border-red-500/30';
+
+            if (isConnected) {
+                qrcodeContainer.classList.add('hidden');
+            } else {
+                qrcodeContainer.classList.remove('hidden');
+            }
+        }
+
         setInterval(async () => {
             try {
                 const response = await fetch('/admin/bridge/status');
-                const data = await response.json();
-                const badge = document.getElementById('status-badge');
-                
-                if (data.status === 'connected') {
-                    badge.innerHTML = 'Conectado';
-                    badge.className = 'px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider bg-green-500/20 text-green-500 border border-green-500/30';
-                    document.getElementById('qrcode-container').classList.add('hidden');
-                } else {
-                    badge.innerHTML = 'Desconectado';
-                    badge.className = 'px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/20 text-red-500 border border-red-500/30';
+                if (!response.ok) {
+                    setStatus('Erro de status', false);
+                    return;
                 }
-            } catch (e) {}
+
+                const data = await response.json();
+                const status = (data.status || '').toString().toLowerCase();
+                const connectedStates = ['connected', 'islogged', 'logged', 'authenticated', 'qr_read_success'];
+                const qrStates = ['qr_ready', 'qrcode', 'scan_qr', 'qr'];
+
+                if (connectedStates.includes(status)) {
+                    setStatus('Conectado', true);
+                } else if (qrStates.includes(status)) {
+                    setStatus('Aguardando QR', false);
+                } else {
+                    setStatus('Desconectado', false);
+                }
+            } catch (e) {
+                setStatus('Bridge offline', false);
+            }
         }, 5000);
     </script>
 </x-filament-panels::page>
