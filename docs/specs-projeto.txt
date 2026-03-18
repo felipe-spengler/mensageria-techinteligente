@@ -35,3 +35,8 @@ Mensalidade: Controle de expiração por API_KEY.
 - Bridge wppconnect rodando no container (status checks em /admin/bridge/status e QR em /admin/bridge/qrcode).
 - Problemas resolvidos: fallback de URL de bridge; melhor log de erros (500) em /enviar; build Docker sem package-lock.
 - Próximo: hardening de retry Redis + envio de status de fila diretamente no frontend.
+
+🔥 Nota importante de Redis:
+- O container PHP usa `REDIS_CLIENT=predis` por padrão no .env para evitar dependência de ext-redis.
+- O package `predis/predis` é adicionado em composer.json.
+- Não versionar `vendor/` no repo; o build usa `composer install` no Dockerfile para instalar dependências.
