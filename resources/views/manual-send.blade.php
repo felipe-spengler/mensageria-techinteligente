@@ -91,6 +91,7 @@
 
                 <form id="sendForm" class="space-y-6">
                     <div id="errorMsg" class="hidden text-red-400 text-sm p-3 bg-red-500/10 border border-red-500/20 rounded-lg"></div>
+                    <div id="debugMsg" class="hidden text-xs font-mono text-gray-100 p-3 bg-gray-900/80 border border-gray-700 rounded-lg whitespace-pre-wrap overflow-auto max-h-36"></div>
                     <div>
                         <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Destinatário(s)</label>
                         <input type="text" id="to" placeholder="Ex: 5545999999999 (com DDD e 55)" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition">
@@ -195,33 +196,60 @@
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
             const errorMsg = document.getElementById('errorMsg');
+            const debugMsg = document.getElementById('debugMsg');
+
             errorMsg.classList.add('hidden');
             errorMsg.innerText = '';
+            debugMsg.classList.remove('hidden');
+            debugMsg.innerText = 'STEP 1: coletando dados e iniciando request...';
             btn.disabled = true; btn.innerHTML = 'Enviando...';
+
+            const payload = {
+                to: document.getElementById('to').value,
+                message: document.getElementById('message').value,
+                media: document.getElementById('mediaBase64').value
+            };
+
+            console.group('manual-send');
+            console.log('manual-send payload', payload);
+
 
             try {
                 const resp = await fetch('/manual-send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                    body: JSON.stringify({
-                        to: document.getElementById('to').value,
-                        message: document.getElementById('message').value,
-                        media: document.getElementById('mediaBase64').value
-                    })
+                    body: JSON.stringify(payload)
                 });
+
+                console.log('manual-send response status', resp.status, resp.statusText);
+                debugMsg.innerText = 'STEP 2: resposta recebida; status=' + resp.status + ' ' + resp.statusText + '\nAguardando parse JSON...';
 
                 let res;
                 try {
                     res = await resp.json();
+                    console.log('manual-send response JSON', res);
+                    debugMsg.innerText = 'STEP 3: payload parseado com sucesso. response=' + JSON.stringify(res, null, 2);
                 } catch (jsonError) {
+                    console.error('manual-send JSON parse error', jsonError);
+                    debugMsg.innerText = 'ERRO STEP 3: resposta não foi JSON válido. status=' + resp.status + '\n' + (await resp.text());
                     throw new Error('Resposta inválida do servidor, tente novamente.');
                 }
 
                 if (!resp.ok || !res.success) {
+                    console.warn('manual-send failed', res);
                     const msg = res?.message || 'Erro ao enviar: status ' + resp.status;
-                    throw new Error(msg);
+                    const e = new Error(msg);
+                    e.details = {
+                        status: resp.status,
+                        statusText: resp.statusText,
+                        body: res
+                    };
+                    debugMsg.innerText = 'ERRO STEP 4: ' + msg + '\n' + JSON.stringify(e.details, null, 2);
+                    throw e;
                 }
 
+                console.log('manual-send success', res);
+                debugMsg.innerText = 'STEP 4: envio aceito pelo backend. ' + JSON.stringify(res, null, 2);
                 document.getElementById('sendForm').classList.add('hidden');
                 if (res.type === 'free') {
                     document.getElementById('successMsg').classList.remove('hidden');
@@ -232,9 +260,22 @@
             } catch (error) {
                 errorMsg.innerText = error.message;
                 errorMsg.classList.remove('hidden');
+
+                const debugMsg = document.getElementById('debugMsg');
+                const payload = {
+                    step_error: error.message,
+                    details: error.details || error,
+                    timestamp: new Date().toISOString(),
+                };
+
+                debugMsg.innerText = 'DEBUG /manual-send:\n' + JSON.stringify(payload, null, 2);
+                debugMsg.classList.remove('hidden');
+
+                console.error('manual-send error', payload);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = 'Enviar Mensagem';
+                console.groupEnd();
             }
         });
 

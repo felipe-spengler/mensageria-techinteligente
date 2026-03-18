@@ -23,7 +23,14 @@ class ManualSendController extends Controller
     public function store(Request $request)
     {
         try {
-            Log::debug('Manual send request', ['to' => $request->to, 'message_length' => strlen($request->message ?? ''), 'from_ip' => $request->ip()]);
+            $payload = [
+                'to' => $request->to,
+                'message_length' => strlen($request->message ?? ''),
+                'has_media' => !empty($request->media),
+                'from_ip' => $request->ip(),
+            ];
+            Log::debug('Manual send request received', $payload);
+
             $request->validate([
                 'to' => 'required|string', // Pode ser CSV
                 'message' => 'required',
@@ -38,11 +45,13 @@ class ManualSendController extends Controller
             $recipients = array_filter($recipients);
 
             if (count($recipients) === 0) {
+                Log::warning('Manual send validation failed: empty recipients', ['payload' => $payload]);
                 return response()->json(['success' => false, 'message' => 'Nenhum destinatário válido informado.'], 422);
             }
 
             // Se for teste grátis (apenas 1 número)
             if (!$hasUsedFree && count($recipients) === 1) {
+                Log::debug('Manual send applying free quota', ['recipient' => $recipients[0]]);
                 $log = MessageLog::create([
                     'to' => $recipients[0],
                     'message' => $request->message,
@@ -53,20 +62,25 @@ class ManualSendController extends Controller
                 ]);
 
                 if (!$this->pushToQueue($log)) {
-                    Log::warning('Falha ao enfileirar mensagem de teste grátis');
+                    Log::warning('Falha ao enfileirar mensagem de teste grátis', ['log_id' => $log->id]);
                     $log->update(['status' => 'failed']);
 
                     return response()->json([
                         'success' => false,
-                        'message' => 'Não foi possível enviar. Tente novamente em alguns segundos.'
+                        'message' => 'Não foi possível enviar. Tente novamente em alguns segundos.',
+                        'debug' => ['stage' => 'queue_push', 'log_id' => $log->id]
                     ], 500);
                 }
 
-                return response()->json([
+                $responsePayload = [
                     'success' => true,
                     'type' => 'free',
-                    'message' => 'Mensagem de teste enviada com sucesso!'
-                ]);
+                    'message' => 'Mensagem de teste enviada com sucesso!',
+                    'debug' => ['stage' => 'queued', 'log_id' => $log->id]
+                ];
+
+                Log::debug('Manual send free response', $responsePayload);
+                return response()->json($responsePayload);
             }
 
             // Caso contrário, gerar PIX de R$ 5,00 (pacote de 5 envios)
@@ -85,20 +99,32 @@ class ManualSendController extends Controller
                 ]
             ]);
 
-            return response()->json([
+            $responsePayload = [
                 'success' => true,
                 'type' => 'paid',
                 'pix_code' => '00020126580014br.gov.bcb.pix...', // Mock PIX code
                 'txid' => $txid,
-                'transaction_id' => $transaction->id
-            ]);
+                'transaction_id' => $transaction->id,
+                'debug' => ['stage' => 'transaction_created', 'txid' => $txid]
+            ];
+            Log::debug('Manual send paid transaction response', $responsePayload);
+            return response()->json($responsePayload);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::warning('Manual send validation failed', ['errors' => $e->errors()]);
-            return response()->json([ 'success' => false, 'message' => 'Dados inválidos', 'errors' => $e->errors() ], 422);
+            Log::warning('Manual send validation failed', ['errors' => $e->errors(), 'payload' => $payload]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Dados inválidos',
+                'errors' => $e->errors(),
+                'debug' => ['stage' => 'validation', 'payload' => $payload]
+            ], 422);
         } catch (\Exception $e) {
-            Log::error('Manual send exception', ['exception' => $e]);
-            return response()->json([ 'success' => false, 'message' => 'Erro interno no servidor: ' . $e->getMessage() ], 500);
+            Log::error('Manual send exception', ['exception' => $e, 'payload' => $payload]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro interno no servidor: ' . $e->getMessage(),
+                'debug' => ['stage' => 'exception', 'exception' => $e->getMessage()]
+            ], 500);
         }
     }
 
