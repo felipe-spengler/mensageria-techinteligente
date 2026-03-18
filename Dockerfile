@@ -33,7 +33,7 @@ WORKDIR /var/www/html
 # Composer (cache layer) e dependências PHP
 COPY composer.json composer.lock ./
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-RUN composer install --no-interaction --optimize-autoloader --no-scripts --ignore-platform-reqs
+RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --optimize-autoloader --no-scripts --ignore-platform-reqs
 
 # Node deps (cache atômico)
 COPY package.json ./
