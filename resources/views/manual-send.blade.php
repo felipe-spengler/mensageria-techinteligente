@@ -328,15 +328,28 @@
 
             try {
                 const r = await fetch('/bridge-health');
-                const data = await r.json();
+                const textBody = await r.text();
+
+                let data;
+                try {
+                    data = JSON.parse(textBody);
+                } catch (jsonError) {
+                    data = null;
+                }
+
+                if (!data) {
+                    console.error('checkHealth parse failed', textBody);
+                    statusEl.innerText = `Health erro: status ${r.status} (${r.statusText})`;
+                    detailsEl.innerText = textBody;
+                    return null;
+                }
 
                 statusEl.innerText = `Bridge: ${data.bridge.status}, Redis: ${data.redis.status}`;
                 detailsEl.innerText = JSON.stringify(data, null, 2);
-
                 console.log('bridge-health', data);
 
                 if (!r.ok) {
-                    throw new Error(`Health API status ${r.status}`);
+                    throw new Error(`Health API status ${r.status} - ${data.error || data.bridge?.details?.error || 'unknown'}`);
                 }
 
                 return data;

@@ -240,40 +240,51 @@ class ManualSendController extends Controller
 
     public function getBridgeHealth()
     {
-        $requestId = (string) Str::uuid();
-        $bridgeStatus = 'unknown';
-        $bridgeData = null;
-        $redisStatus = 'unknown';
-        $redisInfo = null;
-
         try {
-            [$response,] = $this->requestBridge('status');
-            $bridgeData = $response->json();
-            $bridgeStatus = $bridgeData['status'] ?? 'unknown';
-        } catch (\Exception $e) {
-            $bridgeStatus = 'offline';
-            $bridgeData = ['error' => $e->getMessage()];
+            $requestId = (string) Str::uuid();
+            $bridgeStatus = 'unknown';
+            $bridgeData = null;
+            $redisStatus = 'unknown';
+            $redisInfo = null;
+
+            try {
+                [$response,] = $this->requestBridge('status');
+                $bridgeData = $response->json();
+                $bridgeStatus = $bridgeData['status'] ?? 'unknown';
+            } catch (\Exception $e) {
+                $bridgeStatus = 'offline';
+                $bridgeData = ['error' => $e->getMessage()];
+            }
+
+            try {
+                $redis = \Illuminate\Support\Facades\Redis::connection();
+                $redisInfo = $redis->info();
+                $redisStatus = 'online';
+            } catch (\Exception $e) {
+                $redisStatus = 'offline';
+                $redisInfo = ['error' => $e->getMessage()];
+            }
+
+            $result = [
+                'request_id' => $requestId,
+                'bridge' => ['status' => $bridgeStatus, 'details' => $bridgeData],
+                'redis' => ['status' => $redisStatus, 'details' => $redisInfo],
+                'timestamp' => now()->toIso8601String(),
+            ];
+
+            Log::info('Bridge health check', array_merge($result));
+
+            return response()->json($result);
+        } catch (\Throwable $e) {
+            Log::error('Bridge health unexpected error', ['exception' => $e]);
+            return response()->json([
+                'request_id' => (string) Str::uuid(),
+                'bridge' => ['status' => 'error', 'details' => ['message' => $e->getMessage()]],
+                'redis' => ['status' => 'error', 'details' => ['message' => $e->getMessage()]],
+                'timestamp' => now()->toIso8601String(),
+                'error' => 'Health check failed: ' . $e->getMessage(),
+            ], 500);
         }
-
-        try {
-            $redis = \Illuminate\Support\Facades\Redis::connection();
-            $redisInfo = $redis->info();
-            $redisStatus = 'online';
-        } catch (\Exception $e) {
-            $redisStatus = 'offline';
-            $redisInfo = ['error' => $e->getMessage()];
-        }
-
-        $result = [
-            'request_id' => $requestId,
-            'bridge' => ['status' => $bridgeStatus, 'details' => $bridgeData],
-            'redis' => ['status' => $redisStatus, 'details' => $redisInfo],
-            'timestamp' => now()->toIso8601String(),
-        ];
-
-        Log::info('Bridge health check', array_merge($result));
-
-        return response()->json($result);
     }
 
     private function pushToQueue($log): bool
