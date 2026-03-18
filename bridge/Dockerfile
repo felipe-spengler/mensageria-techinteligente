@@ -12,11 +12,9 @@ WORKDIR /app
 COPY package.json ./
 COPY package-lock.json ./
 
-RUN if [ -f package-lock.json ]; then \
-      npm ci --silent --no-audit --progress=false; \
-    else \
-      npm install --silent --no-audit --progress=false; \
-    fi
+RUN npm config set fund false && npm config set audit false && \
+    npm install --silent --legacy-peer-deps --progress=false --no-audit || \
+    npm install --silent --legacy-peer-deps --progress=false
 
 COPY . ./
 
