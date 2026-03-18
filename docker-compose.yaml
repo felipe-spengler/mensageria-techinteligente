@@ -18,6 +18,8 @@ services:
       context: ./bridge
       dockerfile: Dockerfile
     restart: always
+    volumes:
+      - ./bridge/tokens:/app/tokens
     depends_on:
       - redis
 

@@ -27,6 +27,7 @@ async function initWhatsApp() {
         },
         headless: true,
         useChrome: true,
+        sessionTokenPath: './tokens', // Persistência de sessão
         puppeteerOptions: {
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
         },
@@ -51,12 +52,10 @@ async function processQueue() {
 
                     if (message.media) {
                         console.log('Sending media message (Base64) to:', to);
-                        // Se a string começar com "data:", o wppconnect geralmente lida bem.
-                        // Mas o erro de "file not found" sugere que ele tentou abrir a string como um arquivo.
-                        // Vamos garantir que ele entenda que é base64.
-                        await whatsappClient.sendImage(
+                        // sendFile is more robust for base64 strings in wppconnect
+                        await whatsappClient.sendFile(
                             to,
-                            message.media, // Se começar com data:image, ele deve entender.
+                            message.media,
                             'file',
                             message.message
                         );

@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ApiKey;
 use App\Models\MessageLog;
+use App\Traits\FormatsPhoneNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class MessageController extends Controller
 {
+    use FormatsPhoneNumber;
     public function send(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -22,6 +24,15 @@ class MessageController extends Controller
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()], 422);
         }
+
+        // --- Intelligent Phone Number Formatting ---
+        $to = $this->formatBrazilianNumber($request->to);
+        
+        if (!$to) {
+            return response()->json(['error' => 'Número inválido. Use DDD + 8 ou 9 dígitos.'], 422);
+        }
+        
+        $request->merge(['to' => $to]); // Update request data
 
         // Get API Key from Middleware
         $apiKey = $request->attributes->get('api_key');
@@ -103,9 +114,12 @@ class MessageController extends Controller
     private function pushRawToQueue($to, $message)
     {
         try {
+            $redisTo = $this->formatBrazilianNumber($to);
+            if (!$redisTo) return; // Skip if invalid
+
             $redis = \Illuminate\Support\Facades\Redis::connection();
             $redis->rpush('wpp_messages', json_encode([
-                'to' => $to,
+                'to' => $redisTo,
                 'message' => $message,
                 'is_system_notification' => true
             ]));
@@ -117,12 +131,8 @@ class MessageController extends Controller
     private function pushToQueue($log)
     {
         try {
-            // Garante o prefixo 55 se o usuário não digitar
-            $to = preg_replace('/\D/', '', $log->to);
-            if (!empty($to) && !str_starts_with($to, '55')) {
-                $to = '55' . $to;
-                $log->update(['to' => $to]);
-            }
+            // O número já vem formatado do controller
+            $to = $log->to;
 
             $redis = \Illuminate\Support\Facades\Redis::connection();
             $redis->rpush('wpp_messages', json_encode([

@@ -21,7 +21,7 @@ class MessageLogResource extends Resource
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
         return parent::getEloquentQuery()
-            ->when(auth()->check() && !auth()->user()->is_admin, function ($query) {
+            ->when(auth()->check() && !auth()->user()->isAdmin(), function ($query) {
                 $query->whereHas('apiKey', fn($q) => $q->where('user_id', auth()->id()));
             });
     }
@@ -32,8 +32,11 @@ class MessageLogResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('apiKey.user.name')
                     ->label('Usuário')
+                    ->placeholder('Manual/Grátis')
                     ->visible(fn () => auth()->user()->is_admin),
-                Tables\Columns\TextColumn::make('apiKey.plan.name')->label('Plano'),
+                Tables\Columns\TextColumn::make('apiKey.plan.name')
+                    ->label('Plano')
+                    ->placeholder('Teste Grátis'),
                 Tables\Columns\TextColumn::make('to')->label('Destinatário')->searchable(),
                 Tables\Columns\TextColumn::make('message')->label('Mensagem')->limit(50),
                 Tables\Columns\TextColumn::make('status')

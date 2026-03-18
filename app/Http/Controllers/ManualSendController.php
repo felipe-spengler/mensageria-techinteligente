@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ApiKey;
 use App\Models\MessageLog;
 use App\Models\PixTransaction;
+use App\Traits\FormatsPhoneNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 
 class ManualSendController extends Controller
 {
+    use FormatsPhoneNumber;
     public function index(Request $request)
     {
         $ip = $request->ip();
@@ -85,6 +86,16 @@ class ManualSendController extends Controller
             $recipients = explode(',', $request->to);
             $recipients = array_map('trim', $recipients);
             $recipients = array_filter($recipients);
+
+            $formattedRecipients = [];
+            foreach ($recipients as $rawTo) {
+                $to = $this->formatBrazilianNumber($rawTo);
+                if (!$to) {
+                    return response()->json(['success' => false, 'message' => "O número {$rawTo} é inválido. DDD e número necessários."], 422);
+                }
+                $formattedRecipients[] = $to;
+            }
+            $recipients = $formattedRecipients;
 
             if (count($recipients) === 0) {
                 Log::warning('Manual send validation failed: empty recipients', ['payload' => $payload]);
@@ -185,20 +196,51 @@ class ManualSendController extends Controller
             DB::transaction(function () use ($transaction) {
                 $transaction->update(['status' => 'paid']);
 
-                // Criar as mensagens
-                foreach ($transaction->metadata['recipients'] as $to) {
-                    $log = MessageLog::create([
-                        'to' => $to,
-                        'message' => $transaction->metadata['message'],
-                        'media_url' => $transaction->metadata['media'],
-                        'status' => 'queued',
-                        'ip_address' => $transaction->metadata['ip_address'],
-                        'is_free' => false,
-                    ]);
+                $metadata = $transaction->metadata;
+                
+                // --- Trata compra de Pacote Manual (Envio Avulso) ---
+                if (isset($metadata['recipients']) && is_array($metadata['recipients'])) {
+                    foreach ($metadata['recipients'] as $to) {
+                        $log = MessageLog::create([
+                            'to' => $to,
+                            'message' => $metadata['message'] ?? 'Mensagem paga',
+                            'media_url' => $metadata['media'] ?? null,
+                            'status' => 'queued',
+                            'ip_address' => $metadata['ip_address'] ?? null,
+                            'is_free' => false,
+                        ]);
 
-                    if (!$this->pushToQueue($log)) {
-                        $log->update(['status' => 'failed']);
-                        Log::warning('Falha ao enfileirar mensagem de transação no checkStatus: log_id ' . $log->id);
+                        if (!$this->pushToQueue($log)) {
+                            $log->update(['status' => 'failed']);
+                            Log::warning('Falha ao enfileirar mensagem via checkStatus: log_id ' . $log->id);
+                        }
+                    }
+                }
+
+                // --- Trata assinatura de Plano (SaaS / API) ---
+                if (isset($metadata['type']) && $metadata['type'] === 'subscription') {
+                    $userId = $metadata['user_id'] ?? null;
+                    $planId = $metadata['plan_id'] ?? null;
+
+                    if ($userId && $planId) {
+                        // Verifica se o usuário já tem uma chave, se não, cria
+                        $apiKey = \App\Models\ApiKey::firstOrCreate(
+                            ['user_id' => $userId],
+                            [
+                                'key' => 'sk_' . strtolower(\Illuminate\Support\Str::random(32)),
+                                'status' => 'active',
+                                'plan_id' => $planId,
+                            ]
+                        );
+
+                        // Se já tinha chave mas comprou plano novo, atualiza o plano e ativa
+                        if ($apiKey->plan_id != $planId || $apiKey->status !== 'active') {
+                            $apiKey->update([
+                                'plan_id' => $planId,
+                                'status' => 'active',
+                                'expires_at' => now()->addMonth(), // Assinatura mensal
+                            ]);
+                        }
                     }
                 }
             });
@@ -344,12 +386,8 @@ class ManualSendController extends Controller
     private function pushToQueue($log): bool
     {
         try {
-            // Garante o prefixo 55 se o usuário não digitar
-            $to = preg_replace('/\D/', '', $log->to);
-            if (!empty($to) && !str_starts_with($to, '55')) {
-                $to = '55' . $to;
-                $log->update(['to' => $to]);
-            }
+            // O número já vem formatado do controller
+            $to = $log->to;
 
             $redis = \Illuminate\Support\Facades\Redis::connection();
             $redis->rpush('wpp_messages', json_encode([
