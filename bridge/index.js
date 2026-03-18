@@ -106,13 +106,21 @@ app.get('/qrcode', (req, res) => {
 app.get('/status', (req, res) => {
     let status = (connectionStatus || '').toString().toLowerCase();
 
-    if (status === 'islogged' || status === 'logged' || status === 'authenticated') {
+    // Normalize statuses
+    if (['islogged', 'logged', 'authenticated', 'main', 'syncing'].includes(status)) {
         status = 'connected';
+    }
+    if (status.includes('qr')) {
+        status = status.replace(/[^a-z0-9_]/g, '');
+    }
+    if (['disconnected', 'disconnecting', 'failed'].includes(status)) {
+        status = 'disconnected';
     }
 
     res.json({
         status,
         has_client: !!whatsappClient,
+        connectionStatus: connectionStatus,
         timestamp: new Date().toISOString()
     });
 });

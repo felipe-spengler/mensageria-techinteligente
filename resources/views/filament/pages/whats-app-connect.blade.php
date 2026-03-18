@@ -12,6 +12,7 @@
                 <div id="status-badge" class="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider bg-yellow-500/20 text-yellow-500 border border-yellow-500/30">
                     Aguardando Conexão...
                 </div>
+                <p id="status-detail" class="text-xs text-gray-400">Aguardando resposta do bridge...</p>
                 <x-filament::button color="gray" icon="heroicon-o-arrow-path" onclick="window.location.reload()">
                     Atualizar QR Code
                 </x-filament::button>
@@ -47,12 +48,16 @@
     <script>
         const qrcodeContainer = document.getElementById('qrcode-container');
         const statusBadge = document.getElementById('status-badge');
+        const statusDetail = document.getElementById('status-detail');
+        let pollingTimer = null;
 
-        function setStatus(status, isConnected) {
+        function setStatus(status, isConnected, detail = '') {
             statusBadge.innerHTML = status;
             statusBadge.className = isConnected
                 ? 'px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider bg-green-500/20 text-green-500 border border-green-500/30'
                 : 'px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/20 text-red-500 border border-red-500/30';
+
+            statusDetail.innerHTML = detail;
 
             if (isConnected) {
                 qrcodeContainer.classList.add('hidden');
@@ -61,29 +66,41 @@
             }
         }
 
-        setInterval(async () => {
+        async function pollStatus() {
             try {
                 const response = await fetch('/admin/bridge/status');
                 if (!response.ok) {
-                    setStatus('Erro de status', false);
+                    setStatus('Erro de status', false, `HTTP ${response.status}`);
+                    schedulePoll(8000);
                     return;
                 }
 
                 const data = await response.json();
                 const status = (data.status || '').toString().toLowerCase();
-                const connectedStates = ['connected', 'islogged', 'logged', 'authenticated', 'qr_read_success'];
+                const connectedStates = ['connected', 'islogged', 'logged', 'authenticated', 'qr_read_success', 'main'];
                 const qrStates = ['qr_ready', 'qrcode', 'scan_qr', 'qr'];
 
-                if (connectedStates.includes(status)) {
-                    setStatus('Conectado', true);
-                } else if (qrStates.includes(status)) {
-                    setStatus('Aguardando QR', false);
+                if (connectedStates.some(s => status.includes(s))) {
+                    setStatus('Conectado', true, `Bridge status: ${data.status}`);
+                    schedulePoll(15000);
+                } else if (qrStates.some(s => status.includes(s))) {
+                    setStatus('Aguardando QR', false, `Bridge status: ${data.status}`);
+                    schedulePoll(5000);
                 } else {
-                    setStatus('Desconectado', false);
+                    setStatus('Desconectado', false, `Bridge status: ${data.status}`);
+                    schedulePoll(8000);
                 }
             } catch (e) {
-                setStatus('Bridge offline', false);
+                setStatus('Bridge offline', false, e.message || 'Erro de conexão');
+                schedulePoll(10000);
             }
-        }, 5000);
+        }
+
+        function schedulePoll(ms) {
+            if (pollingTimer) clearTimeout(pollingTimer);
+            pollingTimer = setTimeout(pollStatus, ms);
+        }
+
+        pollStatus();
     </script>
 </x-filament-panels::page>
