@@ -36,8 +36,13 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-interaction --optimize-autoloader --no-scripts --ignore-platform-reqs
 
 # Node deps (cache atômico)
-COPY package.json package-lock.json ./
-RUN npm ci --silent --no-audit --progress=false
+COPY package.json ./
+# Se houver package-lock, use npm ci para determinismo. Se não, npm install.
+RUN if [ -f package-lock.json ]; then \
+      npm ci --silent --no-audit --progress=false; \
+    else \
+      npm install --silent --no-audit --progress=false; \
+    fi
 
 # Copia código
 COPY . ./
