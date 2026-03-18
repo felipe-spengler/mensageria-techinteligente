@@ -37,10 +37,13 @@ RUN composer install --no-interaction --optimize-autoloader --no-scripts --ignor
 
 # Node deps (cache atômico)
 COPY package.json ./
-COPY package-lock.json ./
+# Caso não exista package-lock.json, não falha; `npm install` seguirá.
 RUN npm config set fund false && npm config set audit false && \
-    npm install --silent --legacy-peer-deps --progress=false --no-audit || \
-    npm install --silent --legacy-peer-deps --progress=false
+    if [ -f package-lock.json ]; then \
+      npm ci --silent --legacy-peer-deps --progress=false --no-audit; \
+    else \
+      npm install --silent --legacy-peer-deps --progress=false --no-audit; \
+    fi
 
 # Copia código
 COPY . ./
