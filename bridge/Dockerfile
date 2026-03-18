@@ -9,8 +9,14 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci --silent --no-audit --progress=false
+COPY package.json ./
+COPY package-lock.json ./
+
+RUN if [ -f package-lock.json ]; then \
+      npm ci --silent --no-audit --progress=false; \
+    else \
+      npm install --silent --no-audit --progress=false; \
+    fi
 
 COPY . ./
 
