@@ -145,7 +145,9 @@ return [
 
     'redis' => [
 
-        'client' => env('REDIS_CLIENT', 'phpredis'),
+        // Por padrão, usar Predis para compatibilidade quando ext-redis não está disponível.
+        // O deploy de produção pode continuar usando phpredis (se instalado) via REDIS_CLIENT.
+        'client' => env('REDIS_CLIENT', 'predis'),
 
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),

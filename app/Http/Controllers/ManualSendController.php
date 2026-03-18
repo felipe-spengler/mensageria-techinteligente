@@ -262,10 +262,18 @@ class ManualSendController extends Controller
                 $redisStatus = 'online';
             } catch (\Throwable $e) {
                 $redisStatus = 'offline';
+
+                $baseHint = 'Verifique REDIS_CLIENT e as extensões PHP (ext-redis) ou uso de predis.';
+                if (config('database.redis.client') === 'phpredis' && !extension_loaded('redis')) {
+                    $baseHint = 'REDIS_CLIENT está configurado como phpredis mas ext-redis não está carregada. Ajuste para predis ou instale ext-redis.';
+                }
+
                 $redisInfo = [
                     'error' => $e->getMessage(),
-                    'hint' => class_exists('Redis') ? null : 'PHP Redis extension not available. Configure predic or install ext-redis.',
+                    'hint' => $baseHint,
                     'config_client' => config('database.redis.client'),
+                    'php_redis_loaded' => extension_loaded('redis'),
+                    'php_predis_available' => class_exists('Predis\Client'),
                 ];
             }
 
@@ -304,10 +312,16 @@ class ManualSendController extends Controller
 
             return true;
         } catch (\Throwable $e) {
+            $hint = 'Verifique a configuração de redis e a extensão PHP.';
+            if (config('database.redis.client') === 'phpredis' && !extension_loaded('redis')) {
+                $hint = 'REDIS_CLIENT=phpredis mas ext-redis não está instalada (local ou VPS). Use REDIS_CLIENT=predis ou instale ext-redis.';
+            }
             Log::error('Erro ao enviar para o Redis: ' . $e->getMessage(), [
                 'request_id' => $log->id ?? null,
                 'redis_client' => config('database.redis.client'),
                 'php_redis_loaded' => extension_loaded('redis'),
+                'predis_available' => class_exists('Predis\Client'),
+                'hint' => $hint,
             ]);
             return false;
         }
