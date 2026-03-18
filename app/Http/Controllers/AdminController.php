@@ -1,0 +1,103 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\ApiKey;
+use App\Models\MessageLog;
+use App\Models\Setting;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class AdminController extends Controller
+{
+    /**
+     * Dashboard Home
+     */
+    public function index()
+    {
+        $user = Auth::user();
+        
+        $stats = [
+            'total_sent' => MessageLog::when(!$user->isAdmin(), fn($q) => $q->whereHas('apiKey', fn($aq) => $aq->where('user_id', $user->id)))
+                ->where('status', 'sent')
+                ->count(),
+                
+            'total_queued' => MessageLog::when(!$user->isAdmin(), fn($q) => $q->whereHas('apiKey', fn($aq) => $aq->where('user_id', $user->id)))
+                ->where('status', 'queued')
+                ->count(),
+                
+            'total_failed' => MessageLog::when(!$user->isAdmin(), fn($q) => $q->whereHas('apiKey', fn($aq) => $aq->where('user_id', $user->id)))
+                ->where('status', 'failed')
+                ->count(),
+                
+            'api_keys_active' => ApiKey::when(!$user->isAdmin(), fn($q) => $q->where('user_id', $user->id))
+                ->where('status', 'active')
+                ->count(),
+        ];
+
+        return view('admin.index', compact('stats'));
+    }
+
+    /**
+     * API Keys & Payments Page
+     */
+    public function apiKeys()
+    {
+        $user = Auth::user();
+        $keys = ApiKey::when(!$user->isAdmin(), fn($q) => $q->where('user_id', $user->id))
+            ->with(['user', 'plan'])
+            ->latest()
+            ->get();
+
+        return view('admin.api-keys', compact('keys'));
+    }
+
+    /**
+     * Message Reports Page
+     */
+    public function logs(Request $request)
+    {
+        $user = Auth::user();
+        $query = MessageLog::query()->with('apiKey.user')
+            ->when(!$user->isAdmin(), function($q) use ($user) {
+                $q->whereHas('apiKey', fn($aq) => $aq->where('user_id', $user->id));
+            });
+
+        if ($request->has('status') && $request->status) {
+            $query->where('status', $request->status);
+        }
+
+        $logs = $query->latest()->paginate(20);
+
+        return view('admin.logs', compact('logs'));
+    }
+
+    /**
+     * WhatsApp Connection Page
+     */
+    public function whatsapp()
+    {
+        return view('admin.whatsapp');
+    }
+
+    /**
+     * Save Global Asaas Settings
+     */
+    public function saveAsaas(Request $request)
+    {
+        if (!Auth::user()->isAdmin()) {
+            abort(403);
+        }
+
+        $request->validate([
+            'asaas_key' => 'required|string',
+            'asaas_mode' => 'required|in:sandbox,production',
+        ]);
+
+        Setting::setValue('asaas_key', $request->asaas_key, 'asaas');
+        Setting::setValue('asaas_mode', $request->asaas_mode, 'asaas');
+
+        return back()->with('success', 'Configurações de Asaas salvas com sucesso!');
+    }
+}
