@@ -248,16 +248,15 @@
 
                 debugStatus.innerText = 'STEP 2: requisição enviada';
                 debugRequest.innerText = JSON.stringify(payload, null, 2);
-                console.log('manual-send response status', resp.status, resp.statusText);
+                const serverText = await resp.text();
                 debugMsg.innerText = 'STEP 2: resposta recebida; status=' + resp.status + ' ' + resp.statusText + '\nAguardando parse JSON...';
 
                 let res;
                 try {
-                    res = await resp.json();
+                    res = JSON.parse(serverText);
                     console.log('manual-send response JSON', res);
                     debugMsg.innerText = 'STEP 3: payload parseado com sucesso. response=' + JSON.stringify(res, null, 2);
                 } catch (jsonError) {
-                    const serverText = await resp.text();
                     console.error('manual-send JSON parse error', jsonError, 'server raw:', serverText);
                     debugMsg.innerText = 'ERRO STEP 3: resposta não foi JSON válido. status=' + resp.status + ' ' + resp.statusText + '\n' + serverText;
                     debugResponse.innerText = serverText || 'sem corpo';
