@@ -47,16 +47,16 @@ async function processQueue() {
 
                 try {
                     let to = message.to;
-                    if (!to.includes('@c.us')) to = to + '@c.us';
+                    if (!to.includes('@')) to = to + '@c.us';
 
                     if (message.media) {
-                        console.log('Sending media message to:', to);
-                        // Se for base64 com header (data:image/jpeg;base64,...), o wppconnect geralmente lida bem.
-                        // Mas o log anterior mostrou erro de "file not found".
-                        // Use o objeto base64 diretamente se for o caso.
+                        console.log('Sending media message (Base64) to:', to);
+                        // Se a string começar com "data:", o wppconnect geralmente lida bem.
+                        // Mas o erro de "file not found" sugere que ele tentou abrir a string como um arquivo.
+                        // Vamos garantir que ele entenda que é base64.
                         await whatsappClient.sendImage(
                             to,
-                            message.media,
+                            message.media, // Se começar com data:image, ele deve entender.
                             'file',
                             message.message
                         );
@@ -65,15 +65,15 @@ async function processQueue() {
                         await whatsappClient.sendText(to, message.message);
                     }
                     
-                    console.log('Message sent successfully.');
+                    console.log('Message sent successfully. Starting cooldown of 120s.');
                     await notifyLaravel(message.log_id, 'sent');
                 } catch (error) {
                     console.error('Error sending message:', error);
                     await notifyLaravel(message.log_id, 'failed', error.message || 'Error sending');
                 }
 
-                // Cooldown: 5 seg (reduzido para testes, aumente para produção)
-                await new Promise(resolve => setTimeout(resolve, 5000));
+                // Cooldown: 120 seg (Segurança contra BAN do número)
+                await new Promise(resolve => setTimeout(resolve, 120000));
             }
         } catch (e) {
             console.error('Queue processing error:', e);
