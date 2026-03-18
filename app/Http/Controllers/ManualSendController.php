@@ -260,9 +260,13 @@ class ManualSendController extends Controller
                 $redis = \Illuminate\Support\Facades\Redis::connection();
                 $redisInfo = $redis->info();
                 $redisStatus = 'online';
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 $redisStatus = 'offline';
-                $redisInfo = ['error' => $e->getMessage()];
+                $redisInfo = [
+                    'error' => $e->getMessage(),
+                    'hint' => class_exists('Redis') ? null : 'PHP Redis extension not available. Configure predic or install ext-redis.',
+                    'config_client' => config('database.redis.client'),
+                ];
             }
 
             $result = [
@@ -299,8 +303,12 @@ class ManualSendController extends Controller
             ]));
 
             return true;
-        } catch (\Exception $e) {
-            Log::error('Erro ao enviar para o Redis: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('Erro ao enviar para o Redis: ' . $e->getMessage(), [
+                'request_id' => $log->id ?? null,
+                'redis_client' => config('database.redis.client'),
+                'php_redis_loaded' => extension_loaded('redis'),
+            ]);
             return false;
         }
     }
