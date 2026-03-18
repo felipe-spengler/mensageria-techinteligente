@@ -46,26 +46,34 @@ async function processQueue() {
                 console.log('Processing message to:', message.to);
 
                 try {
+                    let to = message.to;
+                    if (!to.includes('@c.us')) to = to + '@c.us';
+
                     if (message.media) {
+                        console.log('Sending media message to:', to);
+                        // Se for base64 com header (data:image/jpeg;base64,...), o wppconnect geralmente lida bem.
+                        // Mas o log anterior mostrou erro de "file not found".
+                        // Use o objeto base64 diretamente se for o caso.
                         await whatsappClient.sendImage(
-                            message.to + '@c.us',
+                            to,
                             message.media,
-                            'image-name',
+                            'file',
                             message.message
                         );
                     } else {
-                        await whatsappClient.sendText(message.to + '@c.us', message.message);
+                        console.log('Sending text message to:', to);
+                        await whatsappClient.sendText(to, message.message);
                     }
                     
-                    console.log('Message sent. Waiting for 2 min cooldown.');
+                    console.log('Message sent successfully.');
                     await notifyLaravel(message.log_id, 'sent');
                 } catch (error) {
                     console.error('Error sending message:', error);
-                    await notifyLaravel(message.log_id, 'failed', error.message);
+                    await notifyLaravel(message.log_id, 'failed', error.message || 'Error sending');
                 }
 
-                // Cooldown: 2 min
-                await new Promise(resolve => setTimeout(resolve, 120000));
+                // Cooldown: 5 seg (reduzido para testes, aumente para produção)
+                await new Promise(resolve => setTimeout(resolve, 5000));
             }
         } catch (e) {
             console.error('Queue processing error:', e);
@@ -75,8 +83,19 @@ async function processQueue() {
 }
 
 async function notifyLaravel(logId, status, error = null) {
+    if (!logId) return;
+    
     try {
-        await axios.post(process.env.WEBHOOK_URL + '/status', {
+        let url = process.env.WEBHOOK_URL;
+        if (!url || url === 'undefined') {
+            url = 'http://app/api/v1/webhook';
+        }
+        
+        // Remove trailing slash and append /status
+        const target = url.replace(/\/$/, '') + '/status';
+        console.log('Notifying Laravel status:', status, 'at', target);
+
+        await axios.post(target, {
             log_id: logId,
             status: status,
             error_message: error
@@ -84,7 +103,7 @@ async function notifyLaravel(logId, status, error = null) {
             headers: { 'Authorization': 'Bearer ' + (process.env.INTERNAL_KEY || '7caeb868-3d08-4761-b126-4f601cd05f7a') }
         });
     } catch (err) {
-        console.error('Failed to notify Laravel:', err.message);
+        console.error('Failed to notify Laravel:', err.message, 'URL used:', process.env.WEBHOOK_URL);
     }
 }
 

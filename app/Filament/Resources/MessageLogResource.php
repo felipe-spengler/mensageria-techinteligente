@@ -21,7 +21,7 @@ class MessageLogResource extends Resource
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
         return parent::getEloquentQuery()
-            ->when(!auth()->user()->is_admin, function ($query) {
+            ->when(auth()->check() && !auth()->user()->is_admin, function ($query) {
                 $query->whereHas('apiKey', fn($q) => $q->where('user_id', auth()->id()));
             });
     }

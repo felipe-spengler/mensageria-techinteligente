@@ -221,7 +221,10 @@ class ManualSendController extends Controller
         return array_values(array_filter($urls));
     }
 
-    private function requestBridge(string $path)
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getEloquentQuery();
+    }            private function requestBridge(string $path)
     {
         $lastError = null;
 
@@ -341,10 +344,17 @@ class ManualSendController extends Controller
     private function pushToQueue($log): bool
     {
         try {
+            // Garante o prefixo 55 se o usuário não digitar
+            $to = preg_replace('/\D/', '', $log->to);
+            if (!empty($to) && !str_starts_with($to, '55')) {
+                $to = '55' . $to;
+                $log->update(['to' => $to]);
+            }
+
             $redis = \Illuminate\Support\Facades\Redis::connection();
             $redis->rpush('wpp_messages', json_encode([
                 'log_id' => $log->id,
-                'to' => $log->to,
+                'to' => $to,
                 'message' => $log->message,
                 'media' => $log->media_url,
             ]));

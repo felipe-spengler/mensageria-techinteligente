@@ -117,10 +117,17 @@ class MessageController extends Controller
     private function pushToQueue($log)
     {
         try {
+            // Garante o prefixo 55 se o usuário não digitar
+            $to = preg_replace('/\D/', '', $log->to);
+            if (!empty($to) && !str_starts_with($to, '55')) {
+                $to = '55' . $to;
+                $log->update(['to' => $to]);
+            }
+
             $redis = \Illuminate\Support\Facades\Redis::connection();
             $redis->rpush('wpp_messages', json_encode([
                 'log_id' => $log->id,
-                'to' => $log->to,
+                'to' => $to,
                 'message' => $log->message,
                 'media' => $log->media_url,
             ]));
