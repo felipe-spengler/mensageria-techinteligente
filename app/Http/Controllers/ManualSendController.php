@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ApiKey;
 use App\Models\MessageLog;
 use App\Models\PixTransaction;
 use Illuminate\Http\Request;
@@ -18,6 +19,44 @@ class ManualSendController extends Controller
         $hasUsedFree = MessageLog::where('ip_address', $ip)->where('is_free', true)->exists();
         
         return view('manual-send', compact('hasUsedFree'));
+    }
+
+    public function showEnviaApi()
+    {
+        Log::info('Envia API page acessada');
+        return view('envia-api');
+    }
+
+    public function postEnviaApi(Request $request)
+    {
+        $apiKey = ApiKey::where('key', 'test_key_master_123')->first();
+
+        if (!$apiKey) {
+            Log::error('Envia API: api key teste não encontrada');
+            return response()->json(['error' => 'API key não encontrada'], 500);
+        }
+
+        $payload = [
+            'to' => '45920014605',
+            'message' => 'testando',
+            'media' => null,
+        ];
+
+        Log::info('Envia API: enviando requisição /api/v1/send', ['payload' => $payload, 'api_key_id' => $apiKey->id]);
+
+        $response = Http::timeout(15)->withHeaders([
+            'Authorization' => 'Bearer ' . $apiKey->key,
+            'Accept' => 'application/json',
+        ])->post(url('/api/v1/send'), $payload);
+
+        $body = $response->json();
+        Log::info('Envia API: resposta recebida', ['status' => $response->status(), 'body' => $body]);
+
+        return response()->json([
+            'success' => $response->successful(),
+            'status' => $response->status(),
+            'response' => $body,
+        ], $response->status());
     }
 
     public function store(Request $request)
