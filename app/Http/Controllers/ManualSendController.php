@@ -23,6 +23,7 @@ class ManualSendController extends Controller
     public function store(Request $request)
     {
         try {
+            Log::debug('Manual send request', ['to' => $request->to, 'message_length' => strlen($request->message ?? ''), 'from_ip' => $request->ip()]);
             $request->validate([
                 'to' => 'required|string', // Pode ser CSV
                 'message' => 'required',
@@ -42,18 +43,24 @@ class ManualSendController extends Controller
 
             // Se for teste grátis (apenas 1 número)
             if (!$hasUsedFree && count($recipients) === 1) {
-                DB::transaction(function () use ($recipients, $request, $ip) {
-                    $log = MessageLog::create([
-                        'to' => $recipients[0],
-                        'message' => $request->message,
-                        'media_url' => $request->media,
-                        'status' => 'queued',
-                        'ip_address' => $ip,
-                        'is_free' => true,
-                    ]);
+                $log = MessageLog::create([
+                    'to' => $recipients[0],
+                    'message' => $request->message,
+                    'media_url' => $request->media,
+                    'status' => 'queued',
+                    'ip_address' => $ip,
+                    'is_free' => true,
+                ]);
 
-                    $this->pushToQueue($log);
-                });
+                if (!$this->pushToQueue($log)) {
+                    Log::warning('Falha ao enfileirar mensagem de teste grátis');
+                    $log->update(['status' => 'failed']);
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Não foi possível enviar. Tente novamente em alguns segundos.'
+                    ], 500);
+                }
 
                 return response()->json([
                     'success' => true,
@@ -87,9 +94,10 @@ class ManualSendController extends Controller
             ]);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::warning('Manual send validation failed', ['errors' => $e->errors()]);
             return response()->json([ 'success' => false, 'message' => 'Dados inválidos', 'errors' => $e->errors() ], 422);
         } catch (\Exception $e) {
-            Log::error('Manual send error: ' . $e->getMessage());
+            Log::error('Manual send exception', ['exception' => $e]);
             return response()->json([ 'success' => false, 'message' => 'Erro interno no servidor: ' . $e->getMessage() ], 500);
         }
     }
@@ -116,7 +124,10 @@ class ManualSendController extends Controller
                         'is_free' => false,
                     ]);
 
-                    $this->pushToQueue($log);
+                    if (!$this->pushToQueue($log)) {
+                        $log->update(['status' => 'failed']);
+                        Log::warning('Falha ao enfileirar mensagem de transação no checkStatus: log_id ' . $log->id);
+                    }
                 }
             });
         }
@@ -145,14 +156,18 @@ class ManualSendController extends Controller
         foreach ($this->buildBridgeUrls() as $base) {
             $url = rtrim($base, '/') . '/' . ltrim($path, '/');
             try {
+                \Illuminate\Support\Facades\Log::debug('Bridge request starting', ['path' => $path, 'url' => $url]);
                 $response = Http::timeout(5)->get($url);
                 if ($response->successful()) {
+                    \Illuminate\Support\Facades\Log::debug('Bridge request succeeded', ['path' => $path, 'url' => $url, 'status' => $response->status()]);
                     return [$response, $url];
                 }
 
                 $lastError = "HTTP " . $response->status();
+                \Illuminate\Support\Facades\Log::warning('Bridge request returned non-success status', ['path' => $path, 'url' => $url, 'status' => $response->status(), 'body' => $response->body()]);
             } catch (\Exception $e) {
                 $lastError = $e->getMessage();
+                \Illuminate\Support\Facades\Log::error('Bridge request exception', ['path' => $path, 'url' => $url, 'exception' => $e]);
             }
 
             \Illuminate\Support\Facades\Log::warning("Bridge request failed [{$path}] {$url}: {$lastError}");
@@ -177,9 +192,11 @@ class ManualSendController extends Controller
     {
         try {
             [$response, $url] = $this->requestBridge('status');
-            return response()->json($response->json());
+            $payload = $response->json();
+            \Illuminate\Support\Facades\Log::debug('Bridge status payload', ['payload' => $payload]);
+            return response()->json($payload);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Status Error: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Status Error', ['exception' => $e]);
             return response()->json([
                 'status' => 'offline',
                 'error' => $e->getMessage(),
@@ -202,7 +219,7 @@ class ManualSendController extends Controller
             return true;
         } catch (\Exception $e) {
             Log::error('Erro ao enviar para o Redis: ' . $e->getMessage());
-            throw new \RuntimeException('Falha ao colocar mensagem na fila: ' . $e->getMessage());
+            return false;
         }
     }
 }
