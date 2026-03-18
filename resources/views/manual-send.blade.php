@@ -89,8 +89,24 @@
                     @endif
                 </div>
 
+                <div id="healthBox" class="mb-6 p-4 bg-black/30 border border-blue-400/30 rounded-xl">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-sm font-bold text-blue-200">Health Check</h3>
+                        <button type="button" id="refreshHealth" class="text-xs px-3 py-1 bg-blue-500/30 border border-blue-400/30 rounded">Refresh</button>
+                    </div>
+                    <div id="healthStatus" class="text-xs text-gray-200">Loading...</div>
+                    <pre id="healthDetails" class="text-xs font-mono mt-2 p-2 bg-black/50 border border-gray-700 rounded max-h-40 overflow-auto"></pre>
+                </div>
+
                 <form id="sendForm" class="space-y-6">
                     <div id="errorMsg" class="hidden text-red-400 text-sm p-3 bg-red-500/10 border border-red-500/20 rounded-lg"></div>
+                    <div id="debugStatus" class="hidden text-xs font-mono text-gray-100 p-2 bg-gray-800/80 border border-gray-700 rounded-lg mb-2"></div>
+                    <div id="debugReqRes" class="hidden bg-gray-900/80 border border-gray-700 rounded-lg p-3 text-xs font-mono text-gray-100 space-y-2 max-h-72 overflow-auto">
+                        <div><strong>Request envoyée</strong></div>
+                        <pre id="debugRequest" class="bg-black/70 border border-gray-500 p-2 rounded overflow-auto"></pre>
+                        <div><strong>Response recebida</strong></div>
+                        <pre id="debugResponse" class="bg-black/70 border border-gray-500 p-2 rounded overflow-auto"></pre>
+                    </div>
                     <div id="debugMsg" class="hidden text-xs font-mono text-gray-100 p-3 bg-gray-900/80 border border-gray-700 rounded-lg whitespace-pre-wrap overflow-auto max-h-36"></div>
                     <div>
                         <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Destinatário(s)</label>
@@ -197,9 +213,18 @@
             const btn = document.getElementById('submitBtn');
             const errorMsg = document.getElementById('errorMsg');
             const debugMsg = document.getElementById('debugMsg');
+            const debugStatus = document.getElementById('debugStatus');
+            const debugReqRes = document.getElementById('debugReqRes');
+            const debugRequest = document.getElementById('debugRequest');
+            const debugResponse = document.getElementById('debugResponse');
 
             errorMsg.classList.add('hidden');
             errorMsg.innerText = '';
+            debugStatus.classList.remove('hidden');
+            debugStatus.innerText = 'STEP 1: iniciando requisição';
+            debugReqRes.classList.remove('hidden');
+            debugRequest.innerText = '';
+            debugResponse.innerText = '';
             debugMsg.classList.remove('hidden');
             debugMsg.innerText = 'STEP 1: coletando dados e iniciando request...';
             btn.disabled = true; btn.innerHTML = 'Enviando...';
@@ -221,6 +246,8 @@
                     body: JSON.stringify(payload)
                 });
 
+                debugStatus.innerText = 'STEP 2: requisição enviada';
+                debugRequest.innerText = JSON.stringify(payload, null, 2);
                 console.log('manual-send response status', resp.status, resp.statusText);
                 debugMsg.innerText = 'STEP 2: resposta recebida; status=' + resp.status + ' ' + resp.statusText + '\nAguardando parse JSON...';
 
@@ -230,9 +257,12 @@
                     console.log('manual-send response JSON', res);
                     debugMsg.innerText = 'STEP 3: payload parseado com sucesso. response=' + JSON.stringify(res, null, 2);
                 } catch (jsonError) {
-                    console.error('manual-send JSON parse error', jsonError);
-                    debugMsg.innerText = 'ERRO STEP 3: resposta não foi JSON válido. status=' + resp.status + '\n' + (await resp.text());
-                    throw new Error('Resposta inválida do servidor, tente novamente.');
+                    const serverText = await resp.text();
+                    console.error('manual-send JSON parse error', jsonError, 'server raw:', serverText);
+                    debugMsg.innerText = 'ERRO STEP 3: resposta não foi JSON válido. status=' + resp.status + ' ' + resp.statusText + '\n' + serverText;
+                    debugResponse.innerText = serverText || 'sem corpo';
+                    debugStatus.innerText = 'STEP 3: inválido JSON';
+                    throw new Error('Resposta inválida do servidor. Veja o console para mais detalhes.');
                 }
 
                 if (!resp.ok || !res.success) {
@@ -244,11 +274,15 @@
                         statusText: resp.statusText,
                         body: res
                     };
+                    debugResponse.innerText = JSON.stringify(res, null, 2);
+                    debugStatus.innerText = 'STEP 4: backend respondeu erro';
                     debugMsg.innerText = 'ERRO STEP 4: ' + msg + '\n' + JSON.stringify(e.details, null, 2);
                     throw e;
                 }
 
                 console.log('manual-send success', res);
+                debugResponse.innerText = JSON.stringify(res, null, 2);
+                debugStatus.innerText = 'STEP 4: backend respondeu sucesso';
                 debugMsg.innerText = 'STEP 4: envio aceito pelo backend. ' + JSON.stringify(res, null, 2);
                 document.getElementById('sendForm').classList.add('hidden');
                 if (res.type === 'free') {
@@ -262,10 +296,16 @@
                 errorMsg.classList.remove('hidden');
 
                 const debugMsg = document.getElementById('debugMsg');
+                const debugStatus = document.getElementById('debugStatus');
+                const debugResponse = document.getElementById('debugResponse');
+                debugStatus.classList.remove('hidden');
+                debugStatus.innerText = 'STEP FIM: erro geral';
+
                 const payload = {
                     step_error: error.message,
                     details: error.details || error,
                     timestamp: new Date().toISOString(),
+                    responseDump: debugResponse.innerText,
                 };
 
                 debugMsg.innerText = 'DEBUG /manual-send:\n' + JSON.stringify(payload, null, 2);
@@ -277,6 +317,41 @@
                 btn.innerHTML = 'Enviar Mensagem';
                 console.groupEnd();
             }
+        });
+
+        async function checkHealth() {
+            const statusEl = document.getElementById('healthStatus');
+            const detailsEl = document.getElementById('healthDetails');
+
+            statusEl.innerText = 'Verificando...';
+            detailsEl.innerText = '';
+
+            try {
+                const r = await fetch('/bridge-health');
+                const data = await r.json();
+
+                statusEl.innerText = `Bridge: ${data.bridge.status}, Redis: ${data.redis.status}`;
+                detailsEl.innerText = JSON.stringify(data, null, 2);
+
+                console.log('bridge-health', data);
+
+                if (!r.ok) {
+                    throw new Error(`Health API status ${r.status}`);
+                }
+
+                return data;
+            } catch (e) {
+                console.error('checkHealth error', e);
+                statusEl.innerText = 'Falha ao checar health: ' + e.message;
+                detailsEl.innerText = e.stack || String(e);
+                return null;
+            }
+        }
+
+        document.getElementById('refreshHealth').addEventListener('click', checkHealth);
+
+        window.addEventListener('DOMContentLoaded', () => {
+            checkHealth();
         });
 
         function startPolling(txid) {

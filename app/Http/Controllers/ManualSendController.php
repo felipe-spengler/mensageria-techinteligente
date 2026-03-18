@@ -22,14 +22,17 @@ class ManualSendController extends Controller
 
     public function store(Request $request)
     {
+        $requestId = (string) Str::uuid();
+
         try {
             $payload = [
+                'request_id' => $requestId,
                 'to' => $request->to,
                 'message_length' => strlen($request->message ?? ''),
                 'has_media' => !empty($request->media),
                 'from_ip' => $request->ip(),
             ];
-            Log::debug('Manual send request received', $payload);
+            Log::info('Manual send request received', $payload);
 
             $request->validate([
                 'to' => 'required|string', // Pode ser CSV
@@ -73,13 +76,14 @@ class ManualSendController extends Controller
                 }
 
                 $responsePayload = [
+                    'request_id' => $requestId,
                     'success' => true,
                     'type' => 'free',
                     'message' => 'Mensagem de teste enviada com sucesso!',
                     'debug' => ['stage' => 'queued', 'log_id' => $log->id]
                 ];
 
-                Log::debug('Manual send free response', $responsePayload);
+                Log::info('Manual send free response', $responsePayload);
                 return response()->json($responsePayload);
             }
 
@@ -100,6 +104,7 @@ class ManualSendController extends Controller
             ]);
 
             $responsePayload = [
+                'request_id' => $requestId,
                 'success' => true,
                 'type' => 'paid',
                 'pix_code' => '00020126580014br.gov.bcb.pix...', // Mock PIX code
@@ -107,20 +112,22 @@ class ManualSendController extends Controller
                 'transaction_id' => $transaction->id,
                 'debug' => ['stage' => 'transaction_created', 'txid' => $txid]
             ];
-            Log::debug('Manual send paid transaction response', $responsePayload);
+            Log::info('Manual send paid transaction response', $responsePayload);
             return response()->json($responsePayload);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::warning('Manual send validation failed', ['errors' => $e->errors(), 'payload' => $payload]);
+            Log::warning('Manual send validation failed', ['errors' => $e->errors(), 'payload' => $payload, 'request_id' => $requestId]);
             return response()->json([
+                'request_id' => $requestId,
                 'success' => false,
                 'message' => 'Dados inválidos',
                 'errors' => $e->errors(),
                 'debug' => ['stage' => 'validation', 'payload' => $payload]
             ], 422);
         } catch (\Exception $e) {
-            Log::error('Manual send exception', ['exception' => $e, 'payload' => $payload]);
+            Log::error('Manual send exception', ['exception' => $e, 'payload' => $payload, 'request_id' => $requestId]);
             return response()->json([
+                'request_id' => $requestId,
                 'success' => false,
                 'message' => 'Erro interno no servidor: ' . $e->getMessage(),
                 'debug' => ['stage' => 'exception', 'exception' => $e->getMessage()]
@@ -229,6 +236,44 @@ class ManualSendController extends Controller
                 'url' => env('WPP_BRIDGE_URL', 'http://bridge:3000') . '/status'
             ], 503);
         }
+    }
+
+    public function getBridgeHealth()
+    {
+        $requestId = (string) Str::uuid();
+        $bridgeStatus = 'unknown';
+        $bridgeData = null;
+        $redisStatus = 'unknown';
+        $redisInfo = null;
+
+        try {
+            [$response,] = $this->requestBridge('status');
+            $bridgeData = $response->json();
+            $bridgeStatus = $bridgeData['status'] ?? 'unknown';
+        } catch (\Exception $e) {
+            $bridgeStatus = 'offline';
+            $bridgeData = ['error' => $e->getMessage()];
+        }
+
+        try {
+            $redis = \Illuminate\Support\Facades\Redis::connection();
+            $redisInfo = $redis->info();
+            $redisStatus = 'online';
+        } catch (\Exception $e) {
+            $redisStatus = 'offline';
+            $redisInfo = ['error' => $e->getMessage()];
+        }
+
+        $result = [
+            'request_id' => $requestId,
+            'bridge' => ['status' => $bridgeStatus, 'details' => $bridgeData],
+            'redis' => ['status' => $redisStatus, 'details' => $redisInfo],
+            'timestamp' => now()->toIso8601String(),
+        ];
+
+        Log::info('Bridge health check', array_merge($result));
+
+        return response()->json($result);
     }
 
     private function pushToQueue($log): bool

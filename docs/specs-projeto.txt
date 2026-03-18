@@ -29,3 +29,9 @@ Diferenciais
 Linux Native: Otimizado para rodar em containers ou VPS baratas.
 Escalável: Você pode ter múltiplas instâncias do bridge para diferentes números de telefone.
 Mensalidade: Controle de expiração por API_KEY.
+
+📍 STATUS ATUAL (MAR 17 2026)
+- Backend Laravel em produção: endpoints /enviar, /manual-send, /pix/status funcional.
+- Bridge wppconnect rodando no container (status checks em /admin/bridge/status e QR em /admin/bridge/qrcode).
+- Problemas resolvidos: fallback de URL de bridge; melhor log de erros (500) em /enviar; build Docker sem package-lock.
+- Próximo: hardening de retry Redis + envio de status de fila diretamente no frontend.

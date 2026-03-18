@@ -46,3 +46,10 @@ O campo API_KEY deve estar configurado no seu
 .env
 .
 Sempre use conexões HTTPS para garantir que a chave não seja interceptada.
+
+📍 STATUS ATUAL (MAR 17 2026)
+- Endpoints testados no fluxo /enviar: validação de payload, resposta de erro e sucesso.
+- Painel cliente já exibe detalhes de debug: request, response, erro, e agrupamento no console.
+- Informe o `WPP_BRIDGE_URL` ideal: `http://bridge:3000` para Coolify internal networking.
+
+➡️ Uso agora: proceder com testes em staging e produção com dados reais no `to` do WhatsApp.

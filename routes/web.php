@@ -7,6 +7,7 @@ Route::get('/', [\App\Http\Controllers\PlanController::class, 'index']);
 Route::get('/enviar', [ManualSendController::class, 'index']);
 Route::post('/manual-send', [ManualSendController::class, 'store']);
 Route::get('/pix/status/{txid}', [ManualSendController::class, 'checkStatus']);
+Route::get('/bridge-health', [ManualSendController::class, 'getBridgeHealth']);
 
 Route::get('/precos', function() { return redirect('/'); });
 Route::get('/purchase/{id}', [\App\Http\Controllers\PlanController::class, 'purchase']);
