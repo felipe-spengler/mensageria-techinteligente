@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\MessageLog;
 use App\Models\PixTransaction;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -41,16 +42,18 @@ class ManualSendController extends Controller
 
             // Se for teste grátis (apenas 1 número)
             if (!$hasUsedFree && count($recipients) === 1) {
-                $log = MessageLog::create([
-                    'to' => $recipients[0],
-                    'message' => $request->message,
-                    'media_url' => $request->media,
-                    'status' => 'queued',
-                    'ip_address' => $ip,
-                    'is_free' => true,
-                ]);
+                DB::transaction(function () use ($recipients, $request, $ip) {
+                    $log = MessageLog::create([
+                        'to' => $recipients[0],
+                        'message' => $request->message,
+                        'media_url' => $request->media,
+                        'status' => 'queued',
+                        'ip_address' => $ip,
+                        'is_free' => true,
+                    ]);
 
-                $this->pushToQueue($log);
+                    $this->pushToQueue($log);
+                });
 
                 return response()->json([
                     'success' => true,
@@ -99,21 +102,23 @@ class ManualSendController extends Controller
         // No mundo real, aqui esperaria o Webhook da Asaas
         if ($transaction->status === 'pending') {
             // Logica temporária para testes: Aprova qualquer transação consultada
-            $transaction->update(['status' => 'paid']);
-            
-            // Criar as mensagens
-            foreach ($transaction->metadata['recipients'] as $to) {
-                $log = MessageLog::create([
-                    'to' => $to,
-                    'message' => $transaction->metadata['message'],
-                    'media_url' => $transaction->metadata['media'],
-                    'status' => 'queued',
-                    'ip_address' => $transaction->metadata['ip_address'],
-                    'is_free' => false,
-                ]);
+            DB::transaction(function () use ($transaction) {
+                $transaction->update(['status' => 'paid']);
 
-                $this->pushToQueue($log);
-            }
+                // Criar as mensagens
+                foreach ($transaction->metadata['recipients'] as $to) {
+                    $log = MessageLog::create([
+                        'to' => $to,
+                        'message' => $transaction->metadata['message'],
+                        'media_url' => $transaction->metadata['media'],
+                        'status' => 'queued',
+                        'ip_address' => $transaction->metadata['ip_address'],
+                        'is_free' => false,
+                    ]);
+
+                    $this->pushToQueue($log);
+                }
+            });
         }
 
         return response()->json([
@@ -183,7 +188,7 @@ class ManualSendController extends Controller
         }
     }
 
-    private function pushToQueue($log)
+    private function pushToQueue($log): bool
     {
         try {
             $redis = \Illuminate\Support\Facades\Redis::connection();
@@ -193,8 +198,11 @@ class ManualSendController extends Controller
                 'message' => $log->message,
                 'media' => $log->media_url,
             ]));
+
+            return true;
         } catch (\Exception $e) {
             Log::error('Erro ao enviar para o Redis: ' . $e->getMessage());
+            throw new \RuntimeException('Falha ao colocar mensagem na fila: ' . $e->getMessage());
         }
     }
 }
