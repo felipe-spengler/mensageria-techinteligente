@@ -6,9 +6,9 @@
 
     <div x-data="{ tab: 'curl' }">
         <div class="flex space-x-1 mb-2 bg-gray-100 p-1 rounded-lg">
-            <button @click="tab = 'curl'" :class="tab === 'curl' ? 'bg-white shadow text-blue-600' : 'text-gray-500'" class="px-3 py-1 text-xs font-bold rounded-md">cURL</button>
-            <button @click="tab = 'php'" :class="tab === 'php' ? 'bg-white shadow text-blue-600' : 'text-gray-500'" class="px-3 py-1 text-xs font-bold rounded-md">PHP (Guzzle/Http)</button>
-            <button @click="tab = 'js'" :class="tab === 'js' ? 'bg-white shadow text-blue-600' : 'text-gray-500'" class="px-3 py-1 text-xs font-bold rounded-md">JS (Axios)</button>
+            <button type="button" @click="tab = 'curl'" :class="tab === 'curl' ? 'bg-white shadow text-blue-600' : 'text-gray-500'" class="px-3 py-1 text-xs font-bold rounded-md">cURL</button>
+            <button type="button" @click="tab = 'php'" :class="tab === 'php' ? 'bg-white shadow text-blue-600' : 'text-gray-500'" class="px-3 py-1 text-xs font-bold rounded-md">PHP (Guzzle/Http)</button>
+            <button type="button" @click="tab = 'js'" :class="tab === 'js' ? 'bg-white shadow text-blue-600' : 'text-gray-500'" class="px-3 py-1 text-xs font-bold rounded-md">JS (Axios)</button>
         </div>
 
         <div x-show="tab === 'curl'" class="p-4 bg-black rounded-xl overflow-x-auto text-green-400 font-mono text-xs">

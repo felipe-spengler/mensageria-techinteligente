@@ -10,7 +10,32 @@ services:
     volumes:
       - storage-data:/var/www/html/storage
     depends_on:
+      - db
       - redis
+
+  # Database MySQL
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_DATABASE: mensageria
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    volumes:
+      - db-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+  # PhpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin:latest
+    restart: always
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: root
+    ports:
+      - "8081:80"
 
   # WhatsApp Bridge (Node.js)
   bridge:
@@ -30,3 +55,4 @@ services:
 
 volumes:
   storage-data:
+  db-data:

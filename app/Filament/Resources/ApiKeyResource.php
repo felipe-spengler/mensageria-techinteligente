@@ -75,7 +75,33 @@ class ApiKeyResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make()->visible(fn () => auth()->user()->is_admin),
+                Tables\Actions\DeleteAction::make()->visible(fn () => auth()->user()->isAdmin()),
+            ])
+            ->emptyStateActions([
+                \Filament\Tables\Actions\Action::make('config_asaas_empty')
+                    ->label('Configurar Conexão Asaas')
+                    ->icon('heroicon-o-credit-card')
+                    ->visible(fn () => auth()->user()->isAdmin())
+                    ->form([
+                        Forms\Components\TextInput::make('asaas_key')
+                            ->label('Sua API Key do Asaas')
+                            ->password()
+                            ->default(\App\Models\Setting::getValue('asaas_key'))
+                            ->required(),
+                        Forms\Components\Select::make('asaas_mode')
+                            ->label('Modo de Operação')
+                            ->options(['sandbox' => 'Teste (Sandbox)', 'production' => 'Real (Produção)'])
+                            ->default(\App\Models\Setting::getValue('asaas_mode', 'sandbox'))
+                            ->required(),
+                    ])
+                    ->action(function (array $data) {
+                        \App\Models\Setting::setValue('asaas_key', $data['asaas_key'], 'asaas');
+                        \App\Models\Setting::setValue('asaas_mode', $data['asaas_mode'], 'asaas');
+                        \Filament\Notifications\Notification::make()
+                            ->title('Configurações Asaas salvas com sucesso!')
+                            ->success()
+                            ->send();
+                    }),
             ]);
     }
 
