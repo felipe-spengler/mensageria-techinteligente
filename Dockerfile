@@ -1,10 +1,14 @@
-# Build stage for Laravel
+# Dockerfile otimizado para rebuild incremental e cache eficiente
 FROM php:8.4-apache
 
-# Install system dependencies
+# Metadata
+LABEL maintainer="TechInteligente" \
+      description="SaaS WhatsApp App"
+
+# Instala dependências necessárias (rodar só se mudar a imagem base)
 RUN apt-get update && apt-get install -y \
-    git \
     curl \
+    git \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
@@ -12,70 +16,49 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     zip \
     unzip \
-    gnupg
+    gnupg && \
+  curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+  apt-get install -y nodejs && \
+  apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs
+# PHP extensions e Apache features
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd intl zip && \
+    a2enmod rewrite
 
-# Clear cache
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd intl zip
-
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
-
-# Set working directory
-WORKDIR /var/www/html
-
-# Update Apache DocumentRoot to Laravel's public folder
+# Apache DocumentRoot
 RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
 
-# Get latest Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+WORKDIR /var/www/html
 
-# Copy composer files first for better caching
+# Composer (cache layer) e dependências PHP
 COPY composer.json composer.lock ./
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+RUN composer install --no-interaction --optimize-autoloader --no-scripts --ignore-platform-reqs
 
-# Install dependencies without scripts (since the app isn't copied yet)
-RUN composer install --no-interaction --no-dev --no-scripts --no-autoloader --ignore-platform-reqs
+# Node deps (cache atômico)
+COPY package.json package-lock.json ./
+RUN npm ci --silent --no-audit --progress=false
 
-# Copy package.json and package-lock.json (if exists)
-COPY package*.json ./
+# Copia código
+COPY . ./
 
-# Install npm dependencies
-RUN npm install
+# Build assets (apenas rodar se recursos mudarem)
+RUN npm run build --silent
 
-# Copy existing application directory contents
-COPY . /var/www/html
+# Crias pastas necessárias em runtime e definem permissões
+RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/testing storage/framework/views storage/logs bootstrap/cache && \
+    touch database/database.sqlite && \
+    composer dump-autoload --optimize --no-scripts && \
+    chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database
 
-# Build assets
-RUN npm run build
+# Ambiente de produção (pode ser sobrescrito via .env)
+ENV APP_ENV=production
+ENV APP_DEBUG=false
 
-# Ensure storage and bootstrap/cache directories exist
-RUN mkdir -p storage/framework/cache/data \
-             storage/framework/sessions \
-             storage/framework/testing \
-             storage/framework/views \
-             storage/logs \
-             bootstrap/cache
-
-# Ensure database file exists for SQLite
-RUN touch database/database.sqlite
-
-# Generate the autoloader without running scripts (avoids database connection issues during build)
-RUN composer dump-autoload --optimize --no-scripts
-
-# Fix permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database
-
-# Expose port 80
 EXPOSE 80
 
-# Move entrypoint script
-COPY entrypoint.sh /usr/local/bin/
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-CMD ["entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["apache2-foreground"]

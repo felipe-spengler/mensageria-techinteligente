@@ -70,15 +70,25 @@ class DefaultDataSeeder extends Seeder
             ],
         ];
 
+        // Create Admin User early so we can use it in API key seeding
+        $adminUser = \App\Models\User::updateOrCreate(
+            ['email' => 'admin@techinteligente.site'],
+            [
+                'name' => 'Administrador',
+                'password' => \Illuminate\Support\Facades\Hash::make('teste123'),
+                'is_admin' => true,
+                'phone' => '5545999999999'
+            ]
+        );
+
         foreach ($plans as $planData) {
             $plan = Plan::updateOrCreate(['name' => $planData['name']], $planData);
-            
-            // If it's the professional plan, let's create a default API key for testing
-            if ($plan->name === 'Starter (Texto)') {
+
+            if ($plan->name === 'Starter (Texto)' && $adminUser) {
                 \App\Models\ApiKey::updateOrCreate(
                     ['key' => 'test_key_master_123'],
                     [
-                        'user_id' => 2, // Admin ID
+                        'user_id' => $adminUser->id,
                         'plan_id' => $plan->id,
                         'status' => 'active',
                         'expires_at' => now()->addYears(1),
@@ -98,16 +108,5 @@ class DefaultDataSeeder extends Seeder
         foreach ($settings as $setting) {
             Setting::updateOrCreate(['key' => $setting['key']], $setting);
         }
-
-        // Create Admin User
-        \App\Models\User::updateOrCreate(
-            ['email' => 'admin@techinteligente.site'],
-            [
-                'name' => 'Administrador',
-                'password' => \Illuminate\Support\Facades\Hash::make('teste123'),
-                'is_admin' => true,
-                'phone' => '5545999999999'
-            ]
-        );
     }
 }
