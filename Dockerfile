@@ -1,5 +1,5 @@
 # Dockerfile otimizado para rebuild incremental e cache eficiente
-FROM php:8.3-apache
+FROM php:8.4-apache
 
 # Metadata
 LABEL maintainer="TechInteligente" \
@@ -33,7 +33,7 @@ WORKDIR /var/www/html
 # Composer (cache layer) e dependências PHP
 COPY composer.json composer.lock ./
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --no-interaction --optimize-autoloader --no-scripts --ignore-platform-reqs
+RUN COMPOSER_MEMORY_LIMIT=-1 composer update --no-interaction --optimize-autoloader --no-scripts --ignore-platform-reqs
 
 # Node deps (cache atômico)
 COPY package.json ./
