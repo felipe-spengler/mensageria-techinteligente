@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ApiKey;
 use App\Models\MessageLog;
+use App\Models\PixTransaction;
 use App\Models\Plan;
 use App\Models\Setting;
 use App\Models\User;
@@ -101,6 +102,37 @@ class AdminController extends Controller
 
         return back()->with('success', 'Configurações de Asaas salvas com sucesso!');
     }
+    /**
+     * Financial Settings Page
+     */
+    public function financeiro()
+    {
+        $transactions = PixTransaction::latest()->paginate(20);
+        $totalTransactions = PixTransaction::count();
+        $paidTransactions = PixTransaction::where('status', 'paid')->count();
+        $pendingTransactions = PixTransaction::where('status', 'pending')->count();
+
+        return view('admin.financeiro', compact(
+            'transactions',
+            'totalTransactions',
+            'paidTransactions',
+            'pendingTransactions'
+        ));
+    }
+
+    public function saveFinanceiro(Request $request)
+    {
+        $request->validate([
+            'asaas_key' => 'required|string',
+            'asaas_mode' => 'required|in:sandbox,production',
+        ]);
+
+        Setting::setValue('asaas_key', $request->asaas_key, 'asaas');
+        Setting::setValue('asaas_mode', $request->asaas_mode, 'asaas');
+
+        return back()->with('success', 'Configurações financeiras salvas com sucesso!');
+    }
+
     /**
      * Plans Management Page
      */

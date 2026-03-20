@@ -22,6 +22,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/whatsapp', [\App\Http\Controllers\AdminController::class, 'whatsapp'])->name('admin.whatsapp');
     Route::post('/admin/save-asaas', [\App\Http\Controllers\AdminController::class, 'saveAsaas'])->name('admin.asaas.save');
 
+    // Financeiro
+    Route::get('/admin/financeiro', [\App\Http\Controllers\AdminController::class, 'financeiro'])->name('admin.financeiro');
+    Route::post('/admin/financeiro', [\App\Http\Controllers\AdminController::class, 'saveFinanceiro'])->name('admin.financeiro.save');
+
     // Plans
     Route::get('/admin/plans', [\App\Http\Controllers\AdminController::class, 'plans'])->name('admin.plans');
     Route::post('/admin/plans', [\App\Http\Controllers\AdminController::class, 'storePlan'])->name('admin.plans.store');

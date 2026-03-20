@@ -83,6 +83,11 @@
                         <span class="text-sm font-medium">Relatórios</span>
                     </a>
 
+                    <a href="/admin/financeiro" class="flex items-center space-x-3 p-3 rounded-xl {{ request()->is('admin/financeiro*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'hover:bg-dash-800 text-gray-400' }}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                        <span class="text-sm font-medium">Financeiro & Asaas</span>
+                    </a>
+
                     <div class="pt-6 pb-2 text-[10px] font-bold text-gray-600 uppercase tracking-widest px-3">WhatsApp</div>
 
                     <a href="/admin/whatsapp" class="flex items-center space-x-3 p-3 rounded-xl {{ request()->is('admin/whatsapp*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20' : 'hover:bg-dash-800 text-gray-400' }}">
