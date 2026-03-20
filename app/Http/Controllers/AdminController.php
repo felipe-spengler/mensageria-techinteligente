@@ -106,19 +106,12 @@ class AdminController extends Controller
      */
     public function plans()
     {
-        if (!Auth::user()->isAdmin()) {
-            abort(403);
-        }
-
         $plans = Plan::all();
         return view('admin.plans', compact('plans'));
     }
 
     public function storePlan(Request $request)
     {
-        if (!Auth::user()->isAdmin()) {
-            abort(403);
-        }
 
         $validated = $request->validate([
             'name' => 'required|string',
@@ -134,9 +127,6 @@ class AdminController extends Controller
 
     public function updatePlan(Request $request, Plan $plan)
     {
-        if (!Auth::user()->isAdmin()) {
-            abort(403);
-        }
 
         $validated = $request->validate([
             'name' => 'required|string',
@@ -152,9 +142,6 @@ class AdminController extends Controller
 
     public function destroyPlan(Plan $plan)
     {
-        if (!Auth::user()->isAdmin()) {
-            abort(403);
-        }
 
         $plan->delete();
         return back()->with('success', 'Plano deletado com sucesso!');

@@ -17,11 +17,13 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(DefaultDataSeeder::class);
         
-        User::create([
-            'name' => 'Admin',
-            'email' => 'admin@admin.com',
-            'password' => bcrypt('supersenha'),
-            'is_admin' => true,
-        ]);
+        User::updateOrCreate(
+            ['email' => 'admin@admin.com'],
+            [
+                'name' => 'Admin',
+                'password' => bcrypt('supersenha'),
+                'is_admin' => true,
+            ]
+        );
     }
 }
