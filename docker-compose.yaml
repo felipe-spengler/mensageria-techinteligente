@@ -21,6 +21,8 @@ services:
       MYSQL_DATABASE: mensageria
       MYSQL_ROOT_PASSWORD: root
       MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: supersenha
     volumes:
       - db-data:/var/lib/mysql
     ports:
