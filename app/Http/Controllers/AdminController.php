@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ApiKey;
 use App\Models\MessageLog;
+use App\Models\Plan;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -99,5 +100,93 @@ class AdminController extends Controller
         Setting::setValue('asaas_mode', $request->asaas_mode, 'asaas');
 
         return back()->with('success', 'Configurações de Asaas salvas com sucesso!');
+    }
+    /**
+     * Plans Management Page
+     */
+    public function plans()
+    {
+        if (!Auth::user()->isAdmin()) {
+            abort(403);
+        }
+
+        $plans = Plan::all();
+        return view('admin.plans', compact('plans'));
+    }
+
+    public function storePlan(Request $request)
+    {
+        if (!Auth::user()->isAdmin()) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string',
+            'type' => 'required|string',
+            'price' => 'required|numeric',
+            'message_limit' => 'required|integer',
+            'description' => 'required|string',
+        ]);
+
+        Plan::create($validated);
+        return back()->with('success', 'Plano criado com sucesso!');
+    }
+
+    public function updatePlan(Request $request, Plan $plan)
+    {
+        if (!Auth::user()->isAdmin()) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string',
+            'type' => 'required|string',
+            'price' => 'required|numeric',
+            'message_limit' => 'required|integer',
+            'description' => 'required|string',
+        ]);
+
+        $plan->update($validated);
+        return back()->with('success', 'Plano atualizado com sucesso!');
+    }
+
+    public function destroyPlan(Plan $plan)
+    {
+        if (!Auth::user()->isAdmin()) {
+            abort(403);
+        }
+
+        $plan->delete();
+        return back()->with('success', 'Plano deletado com sucesso!');
+    }
+
+    /**
+     * Store new API Key
+     */
+    public function storeApiKey(Request $request)
+    {
+        $request->validate([
+            'plan_id' => 'required|exists:plans,id',
+        ]);
+
+        ApiKey::create([
+            'user_id' => Auth::id(),
+            'plan_id' => $request->plan_id,
+            'key' => 'sk_' . \Illuminate\Support\Str::random(32),
+            'status' => 'active',
+            'expires_at' => now()->addMonth(),
+        ]);
+
+        return back()->with('success', 'Chave API criada com sucesso!');
+    }
+
+    public function destroyApiKey(ApiKey $apiKey)
+    {
+        if ($apiKey->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
+            abort(403);
+        }
+
+        $apiKey->delete();
+        return back()->with('success', 'Chave deletada com sucesso!');
     }
 }

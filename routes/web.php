@@ -4,9 +4,9 @@ use App\Http\Controllers\ManualSendController;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [LoginController::class, 'login']);
-Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+Route::get('/admin/login', [LoginController::class, 'showLoginForm'])->name('login');
+Route::post('/admin/login', [LoginController::class, 'login']);
+Route::post('/admin/logout', [LoginController::class, 'logout'])->name('logout');
 
 Route::get('/', [\App\Http\Controllers\PlanController::class, 'index']);
 Route::get('/enviar', [ManualSendController::class, 'index']);
@@ -21,6 +21,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/logs', [\App\Http\Controllers\AdminController::class, 'logs'])->name('admin.logs');
     Route::get('/admin/whatsapp', [\App\Http\Controllers\AdminController::class, 'whatsapp'])->name('admin.whatsapp');
     Route::post('/admin/save-asaas', [\App\Http\Controllers\AdminController::class, 'saveAsaas'])->name('admin.asaas.save');
+
+    // Plans
+    Route::get('/admin/plans', [\App\Http\Controllers\AdminController::class, 'plans'])->name('admin.plans');
+    Route::post('/admin/plans', [\App\Http\Controllers\AdminController::class, 'storePlan'])->name('admin.plans.store');
+    Route::put('/admin/plans/{plan}', [\App\Http\Controllers\AdminController::class, 'updatePlan'])->name('admin.plans.update');
+    Route::delete('/admin/plans/{plan}', [\App\Http\Controllers\AdminController::class, 'destroyPlan'])->name('admin.plans.destroy');
+    
+    // API Keys logic
+    Route::post('/admin/api-keys', [\App\Http\Controllers\AdminController::class, 'storeApiKey'])->name('admin.api_keys.store');
+    Route::delete('/admin/api-keys/{apiKey}', [\App\Http\Controllers\AdminController::class, 'destroyApiKey'])->name('admin.api_keys.destroy');
 
     // Bridge Status
     Route::get('/admin/bridge/qrcode', [ManualSendController::class, 'getBridgeQrCode']);

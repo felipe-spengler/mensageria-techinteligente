@@ -106,9 +106,14 @@
                 async fetchQrCode() {
                     try {
                         const res = await fetch('/admin/bridge/qrcode');
-                        const data = await res.json();
-                        if (data.qrcode) {
-                            this.qrCode = data.qrcode;
+                        if (res.ok && res.headers.get('content-type').includes('image/png')) {
+                            const blob = await res.blob();
+                            this.qrCode = URL.createObjectURL(blob);
+                        } else {
+                            const data = await res.json().catch(() => null);
+                            if (data && data.qrcode) {
+                                this.qrCode = data.qrcode;
+                            }
                         }
                     } catch(e) { console.error(e); }
                 },
