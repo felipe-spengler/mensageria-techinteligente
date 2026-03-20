@@ -24,7 +24,7 @@ services:
     volumes:
       - db-data:/var/lib/mysql
     ports:
-      - "3306:3306"
+      - "3307:3306"
 
   # PhpMyAdmin
   phpmyadmin:
@@ -35,7 +35,7 @@ services:
       PMA_USER: root
       PMA_PASSWORD: root
     ports:
-      - "8081:80"
+      - "8085:80"
 
   # WhatsApp Bridge (Node.js)
   bridge:
