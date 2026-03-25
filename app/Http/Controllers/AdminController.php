@@ -123,12 +123,19 @@ class AdminController extends Controller
     public function saveFinanceiro(Request $request)
     {
         $request->validate([
-            'asaas_key' => 'required|string',
+            'asaas_key' => 'nullable|string',
             'asaas_mode' => 'required|in:sandbox,production',
+            'asaas_enabled' => 'nullable|boolean',
+            'asaas_webhook_token' => 'nullable|string',
         ]);
 
-        Setting::setValue('asaas_key', $request->asaas_key, 'asaas');
+        Setting::setValue('asaas_api_key', $request->asaas_key ?? '', 'asaas');
         Setting::setValue('asaas_mode', $request->asaas_mode, 'asaas');
+        Setting::setValue('asaas_enabled', $request->asaas_enabled ? 'true' : 'false', 'asaas');
+        
+        if ($request->asaas_webhook_token) {
+            Setting::setValue('asaas_webhook_token', $request->asaas_webhook_token, 'asaas');
+        }
 
         return back()->with('success', 'Configurações financeiras salvas com sucesso!');
     }

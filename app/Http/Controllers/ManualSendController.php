@@ -189,63 +189,8 @@ class ManualSendController extends Controller
     {
         $transaction = PixTransaction::where('txid', $txid)->firstOrFail();
         
-        // Simulação: Se for mock, vamos "pagar" automaticamente após 10 segundos ou ao consultar
-        // No mundo real, aqui esperaria o Webhook da Asaas
-        if ($transaction->status === 'pending') {
-            // Logica temporária para testes: Aprova qualquer transação consultada
-            DB::transaction(function () use ($transaction) {
-                $transaction->update(['status' => 'paid']);
-
-                $metadata = $transaction->metadata;
-                
-                // --- Trata compra de Pacote Manual (Envio Avulso) ---
-                if (isset($metadata['recipients']) && is_array($metadata['recipients'])) {
-                    foreach ($metadata['recipients'] as $to) {
-                        $log = MessageLog::create([
-                            'to' => $to,
-                            'message' => $metadata['message'] ?? 'Mensagem paga',
-                            'media_url' => $metadata['media'] ?? null,
-                            'status' => 'queued',
-                            'ip_address' => $metadata['ip_address'] ?? null,
-                            'is_free' => false,
-                        ]);
-
-                        if (!$this->pushToQueue($log)) {
-                            $log->update(['status' => 'failed']);
-                            Log::warning('Falha ao enfileirar mensagem via checkStatus: log_id ' . $log->id);
-                        }
-                    }
-                }
-
-                // --- Trata assinatura de Plano (SaaS / API) ---
-                if (isset($metadata['type']) && $metadata['type'] === 'subscription') {
-                    $userId = $metadata['user_id'] ?? null;
-                    $planId = $metadata['plan_id'] ?? null;
-
-                    if ($userId && $planId) {
-                        // Verifica se o usuário já tem uma chave, se não, cria
-                        $apiKey = \App\Models\ApiKey::firstOrCreate(
-                            ['user_id' => $userId],
-                            [
-                                'key' => 'sk_' . strtolower(\Illuminate\Support\Str::random(32)),
-                                'status' => 'active',
-                                'plan_id' => $planId,
-                            ]
-                        );
-
-                        // Se já tinha chave mas comprou plano novo, atualiza o plano e ativa
-                        if ($apiKey->plan_id != $planId || $apiKey->status !== 'active') {
-                            $apiKey->update([
-                                'plan_id' => $planId,
-                                'status' => 'active',
-                                'expires_at' => now()->addMonth(), // Assinatura mensal
-                            ]);
-                        }
-                    }
-                }
-            });
-        }
-
+        // Retorna apenas o status real da transação
+        // O pagamento será processado via webhook do Asaas (AsaasWebhookController)
         return response()->json([
             'status' => $transaction->status,
         ]);

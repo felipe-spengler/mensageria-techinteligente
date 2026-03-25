@@ -101,6 +101,8 @@ class DefaultDataSeeder extends Seeder
         $settings = [
             ['key' => 'asaas_api_key', 'value' => '', 'group' => 'asaas'],
             ['key' => 'asaas_mode', 'value' => 'sandbox', 'group' => 'asaas'],
+            ['key' => 'asaas_enabled', 'value' => 'false', 'group' => 'asaas'],
+            ['key' => 'asaas_webhook_token', 'value' => 'wh_' . bin2hex(random_bytes(16)), 'group' => 'asaas'],
             ['key' => 'wpp_bridge_key', 'value' => '7caeb868-3d08-4761-b126-4f601cd05f7a', 'group' => 'bridge'],
             ['key' => 'webhook_token', 'value' => bin2hex(random_bytes(16)), 'group' => 'security'],
         ];

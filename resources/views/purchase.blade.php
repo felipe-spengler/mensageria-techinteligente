@@ -55,11 +55,20 @@
 
         <div id="pixContainer" class="hidden text-center space-y-6">
             <div class="bg-white p-4 rounded-2xl inline-block mx-auto">
-                <img id="pixQr" src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=PROTESTO" class="w-48 h-48 mx-auto">
+                <img id="pixQr" src="" class="w-48 h-48 mx-auto">
             </div>
             <div class="space-y-2">
                 <p class="text-sm font-semibold">Escaneie o QR Code acima</p>
                 <p class="text-xs text-gray-400">O seu acesso será liberado instantaneamente após a confirmação do pagamento.</p>
+            </div>
+            <div id="pixCopyContainer" class="hidden">
+                <div class="bg-gray-800 rounded-lg p-3 text-xs break-all">
+                    <p class="text-gray-500 mb-1">PIX Copia e Cola:</p>
+                    <p id="pixPayload" class="text-white font-mono"></p>
+                </div>
+                <button onclick="copyPixPayload()" class="mt-2 bg-gray-700 hover:bg-gray-600 text-white text-xs px-4 py-2 rounded-lg transition">
+                    Copiar Código PIX
+                </button>
             </div>
             <div class="animate-pulse text-blue-400 text-xs font-medium">
                 Aguardando pagamento...
@@ -77,6 +86,8 @@
     </div>
 
     <script>
+        let pixPayloadGlobal = '';
+
         document.getElementById('purchaseForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
@@ -104,6 +115,26 @@
 
             const result = await response.json();
             if (result.success) {
+                // Exibe QR Code
+                const qrImg = document.getElementById('pixQr');
+                if (result.qr_code_image) {
+                    // QR Code do Asaas (base64)
+                    qrImg.src = 'data:image/png;base64,' + result.qr_code_image;
+                } else if (result.pix_payload) {
+                    // Gera QR Code via API externa
+                    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(result.pix_payload)}`;
+                } else {
+                    // Fallback
+                    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(result.qr_code)}`;
+                }
+
+                // Exibe PIX Copia e Cola se disponível
+                if (result.pix_payload) {
+                    pixPayloadGlobal = result.pix_payload;
+                    document.getElementById('pixPayload').textContent = result.pix_payload;
+                    document.getElementById('pixCopyContainer').classList.remove('hidden');
+                }
+
                 document.getElementById('purchaseForm').classList.add('hidden');
                 document.getElementById('pixContainer').classList.remove('hidden');
                 startPolling(result.txid);
@@ -113,6 +144,12 @@
                 btn.innerHTML = 'Gerar PIX de Pagamento';
             }
         });
+
+        function copyPixPayload() {
+            navigator.clipboard.writeText(pixPayloadGlobal).then(() => {
+                alert('Código PIX copiado!');
+            });
+        }
 
         function startPolling(txid) {
             const interval = setInterval(async () => {
