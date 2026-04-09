@@ -17,6 +17,8 @@ services:
         limits:
           cpus: '0.50'
           memory: 512M
+        reservations:
+          memory: 128M
 
   # Laravel Background Worker
   worker:
@@ -29,12 +31,16 @@ services:
     depends_on:
       - redis
       - db
-    entrypoint: ["php", "artisan", "queue:work", "--tries=3"]
+    # --max-memory: restart worker if PHP heap > 256 MB (prevents gradual memory leaks)
+    # --max-jobs:   restart after 500 jobs (reclaims any accumulated memory)
+    entrypoint: ["php", "artisan", "queue:work", "--tries=3", "--max-memory=256", "--max-jobs=500"]
     deploy:
       resources:
         limits:
           cpus: '0.25'
           memory: 256M
+        reservations:
+          memory: 64M
 
   # Database MySQL
   db:
@@ -46,6 +52,11 @@ services:
       MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
       MYSQL_USER: app_user
       MYSQL_PASSWORD: supersenha
+    # Prevent connection storms from overwhelming the VPS
+    command: >-
+      --max_connections=100
+      --innodb_buffer_pool_size=128M
+      --table_open_cache=200
     volumes:
       - db-data-v2:/var/lib/mysql
     ports:
@@ -55,6 +66,8 @@ services:
         limits:
           cpus: '0.50'
           memory: 512M
+        reservations:
+          memory: 128M
 
   # PhpMyAdmin
   phpmyadmin:
@@ -69,6 +82,8 @@ services:
         limits:
           cpus: '0.25'
           memory: 256M
+        reservations:
+          memory: 32M
 
   # WhatsApp Bridge (Node.js)
   bridge:
@@ -76,19 +91,41 @@ services:
       context: ./bridge
       dockerfile: Dockerfile
     restart: always
+    stop_grace_period: 10s  # give Node.js time to flush before SIGKILL
     volumes:
       - ./bridge/tokens:/app/tokens
     depends_on:
       - redis
+    environment:
+      HEAP_LIMIT_MB: '1100'        # watchdog threshold (MB)
+      QUEUE_MAX_SIZE: '5000'       # max Redis queue depth before pausing
+      RATE_LIMIT_MAX: '5'          # max messages per number per minute
+      AXIOS_TIMEOUT_MS: '30000'    # 30 s timeout for Laravel webhook calls
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
     deploy:
       resources:
         limits:
           cpus: '1.0'
           memory: 1536M
+        reservations:
+          memory: 256M
 
   # Redis for Queue and Bridge communication
   redis:
     image: redis:alpine
+    # maxmemory: hard cap to prevent unbounded growth
+    # allkeys-lru: evict least-recently-used keys when full (safe for queue workloads)
+    command: >-
+      redis-server
+      --maxmemory 100mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1
+      --loglevel warning
     volumes:
       - redis-data:/data
     restart: always
@@ -97,6 +134,8 @@ services:
         limits:
           cpus: '0.20'
           memory: 128M
+        reservations:
+          memory: 32M
 
 volumes:
   storage-data:

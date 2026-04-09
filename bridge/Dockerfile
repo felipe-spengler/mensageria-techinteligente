@@ -18,6 +18,11 @@ RUN npm config set fund false && npm config set audit false && \
 
 COPY . ./
 
-EXPOSE 8080
+EXPOSE 3000
 
-CMD ["node", "index.js"]
+# Limit Node.js heap to 1.2 GB to prevent OOM on the VPS
+CMD ["node", "--max-old-space-size=1200", "index.js"]
+
+# Docker health check – asks /health every 30s; 3 failures = unhealthy
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD wget -qO- http://localhost:3000/health || exit 1
