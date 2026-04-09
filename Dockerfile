@@ -25,8 +25,9 @@ RUN apt-get update && apt-get install -y \
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd intl zip && \
     a2enmod rewrite
 
-# Apache DocumentRoot
-RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
+# Apache DocumentRoot + suppress ServerName FQDN warning
+RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf && \
+    echo 'ServerName localhost' >> /etc/apache2/apache2.conf
 
 WORKDIR /var/www/html
 

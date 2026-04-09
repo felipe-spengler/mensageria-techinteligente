@@ -31,9 +31,9 @@ services:
     depends_on:
       - redis
       - db
-    # --max-memory: restart worker if PHP heap > 256 MB (prevents gradual memory leaks)
-    # --max-jobs:   restart after 500 jobs (reclaims any accumulated memory)
-    entrypoint: ["php", "artisan", "queue:work", "--tries=3", "--max-memory=256", "--max-jobs=500"]
+    # --memory:   graceful restart if PHP heap > 256 MB (prevents gradual memory leaks)
+    # --max-jobs: restart after 500 jobs (reclaims any accumulated memory)
+    entrypoint: ["php", "artisan", "queue:work", "--tries=3", "--memory=256", "--max-jobs=500"]
     deploy:
       resources:
         limits:
