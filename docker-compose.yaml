@@ -12,6 +12,29 @@ services:
     depends_on:
       - db
       - redis
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+
+  # Laravel Background Worker
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    volumes:
+      - storage-data:/var/www/html/storage
+    depends_on:
+      - redis
+      - db
+    entrypoint: ["php", "artisan", "queue:work", "--tries=3"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
   # Database MySQL
   db:
@@ -26,7 +49,12 @@ services:
     volumes:
       - db-data-v2:/var/lib/mysql
     ports:
-      - "3307:3306"
+      - "127.0.0.1:3307:3306" # Somente local/SSH
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
 
   # PhpMyAdmin
   phpmyadmin:
@@ -35,7 +63,12 @@ services:
     environment:
       PMA_HOST: db
     ports:
-      - "8085:80"
+      - "127.0.0.1:8085:80" # Somente local/SSH
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
   # WhatsApp Bridge (Node.js)
   bridge:
@@ -47,12 +80,25 @@ services:
       - ./bridge/tokens:/app/tokens
     depends_on:
       - redis
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1536M
 
   # Redis for Queue and Bridge communication
   redis:
     image: redis:alpine
+    volumes:
+      - redis-data:/data
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.20'
+          memory: 128M
 
 volumes:
   storage-data:
   db-data-v2:
+  redis-data:

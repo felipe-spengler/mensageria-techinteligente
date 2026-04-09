@@ -47,4 +47,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'internal_key' => env('INTERNAL_KEY', '7caeb868-3d08-4761-b126-4f601cd05f7a'),
+
 ];

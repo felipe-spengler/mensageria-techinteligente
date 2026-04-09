@@ -4,7 +4,7 @@ Um sistema de mensageria independente para envio de mensagens via WhatsApp com s
 
 ## 🏗️ Arquitetura
 - **Backend:** Laravel 12 (PHP 8.2+)
-- **Admin:** Filament v3
+- **Admin:** 
 - **Bridge:** Node.js + WPPConnect
 - **Fila:** Redis
 

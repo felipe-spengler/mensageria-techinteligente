@@ -10,6 +10,14 @@ class WebhookController extends Controller
 {
     public function status(Request $request)
     {
+        // Simple internal authentication
+        $authHeader = $request->header('Authorization');
+        $internalKey = config('app.internal_key', env('INTERNAL_KEY', '7caeb868-3d08-4761-b126-4f601cd05f7a'));
+        
+        if ($authHeader !== 'Bearer ' . $internalKey) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
         $request->validate([
             'log_id' => 'required|exists:message_logs,id',
             'status' => 'required|in:sent,failed',
