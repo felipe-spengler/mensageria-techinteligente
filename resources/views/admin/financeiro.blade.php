@@ -24,7 +24,7 @@
             <div class="glass rounded-3xl p-6 border-dash-700">
                 <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Gateway</p>
                 <div class="flex items-center space-x-3">
-                    @php $asaasKey = \App\Models\Setting::getValue('asaas_key'); @endphp
+                    @php $asaasKey = \App\Models\Setting::getValue('asaas_api_key'); @endphp
                     @if($asaasKey)
                         <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
                         <span class="text-sm font-bold text-emerald-400">Asaas Configurado</span>
@@ -74,7 +74,7 @@
                         <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">API Key do Asaas</label>
                         <div class="relative" x-data="{ show: false }">
                             <input :type="show ? 'text' : 'password'" name="asaas_key" 
-                                value="{{ \App\Models\Setting::getValue('asaas_key') }}"
+                                value="{{ \App\Models\Setting::getValue('asaas_api_key') }}"
                                 class="w-full bg-[#0a0a0c] border border-white/5 rounded-2xl p-4 pr-12 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono text-sm"
                                 placeholder="$aact_YourKeyHere...">
                             <button type="button" @click="show = !show" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition">

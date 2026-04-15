@@ -97,7 +97,7 @@ class AdminController extends Controller
             'asaas_mode' => 'required|in:sandbox,production',
         ]);
 
-        Setting::setValue('asaas_key', $request->asaas_key, 'asaas');
+        Setting::setValue('asaas_api_key', $request->asaas_key, 'asaas');
         Setting::setValue('asaas_mode', $request->asaas_mode, 'asaas');
 
         return back()->with('success', 'Configurações de Asaas salvas com sucesso!');

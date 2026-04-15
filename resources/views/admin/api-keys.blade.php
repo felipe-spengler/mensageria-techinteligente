@@ -112,7 +112,7 @@
                 @csrf
                 <div>
                     <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Asaas API Key (Produção ou Sandbox)</label>
-                    <input type="password" name="asaas_key" value="{{ \App\Models\Setting::getValue('asaas_key') }}" required class="w-full bg-dash-950 border border-white/5 rounded-2xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                    <input type="password" name="asaas_key" value="{{ \App\Models\Setting::getValue('asaas_api_key') }}" required class="w-full bg-dash-950 border border-white/5 rounded-2xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
                 </div>
                 <div>
                     <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Ambiente</label>
