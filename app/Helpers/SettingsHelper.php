@@ -9,7 +9,9 @@ class SettingsHelper
     public static function get($key, $default = null)
     {
         $setting = Setting::where('key', $key)->first();
-        return $setting ? $setting->value : $default;
+        if ($setting) return $setting->value;
+
+        return env(strtoupper($key), $default);
     }
 }
 

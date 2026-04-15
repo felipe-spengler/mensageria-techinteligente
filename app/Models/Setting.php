@@ -10,7 +10,10 @@ class Setting extends Model
 
     public static function getValue(string $key, $default = null)
     {
-        return self::where('key', $key)->first()?->value ?? $default;
+        $value = self::where('key', $key)->first()?->value;
+        if ($value !== null) return $value;
+
+        return env(strtoupper($key), $default);
     }
 
     public static function setValue(string $key, string $value, string $group = 'system')
