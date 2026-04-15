@@ -83,6 +83,27 @@ let isShuttingDown = false;
 // ─────────────────────────────────────────────────────────────────────────────
 async function initWhatsApp() {
     connectionStatus = 'connecting';
+
+    // Remove stale Chromium profile locks left by previous container crashes.
+    // Without this, Chromium refuses to start with "profile in use" error (Code 21).
+    const fs = require('fs');
+    const path = require('path');
+    const sessionPath = path.join(__dirname, 'tokens', 'mensageria-tech');
+    
+    if (fs.existsSync(sessionPath)) {
+        const files = fs.readdirSync(sessionPath);
+        files.forEach(file => {
+            if (file.startsWith('Singleton')) {
+                try {
+                    fs.unlinkSync(path.join(sessionPath, file));
+                    console.log(`[BOOT] Removed stale lock: ${file}`);
+                } catch (e) {
+                    console.warn(`[BOOT] Could not remove ${file}:`, e.message);
+                }
+            }
+        });
+    }
+
     whatsappClient = await wppconnect.create({
         session: 'mensageria-tech',
         catchQR: (base64Qr) => {
