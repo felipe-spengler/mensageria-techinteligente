@@ -25,6 +25,7 @@ Route::middleware(['auth'])->group(function () {
     // Financeiro
     Route::get('/admin/financeiro', [\App\Http\Controllers\AdminController::class, 'financeiro'])->name('admin.financeiro');
     Route::post('/admin/financeiro', [\App\Http\Controllers\AdminController::class, 'saveFinanceiro'])->name('admin.financeiro.save');
+    Route::post('/admin/financeiro/test', [\App\Http\Controllers\AdminController::class, 'testAsaas'])->name('admin.financeiro.test');
 
     // Plans
     Route::get('/admin/plans', [\App\Http\Controllers\AdminController::class, 'plans'])->name('admin.plans');

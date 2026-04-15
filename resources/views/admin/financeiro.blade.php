@@ -17,10 +17,16 @@
                     <span>{{ session('success') }}</span>
                 </div>
             @endif
+            @if(session('error'))
+                <div class="flex items-center space-x-2 bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-2 rounded-2xl text-xs font-bold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span>{{ session('error') }}</span>
+                </div>
+            @endif
         </div>
 
         <!-- Status Asaas -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div class="glass rounded-3xl p-6 border-dash-700">
                 <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Gateway</p>
                 <div class="flex items-center space-x-3">
@@ -31,6 +37,19 @@
                     @else
                         <span class="w-3 h-3 rounded-full bg-red-500"></span>
                         <span class="text-sm font-bold text-red-400">Não Configurado</span>
+                    @endif
+                </div>
+            </div>
+            <div class="glass rounded-3xl p-6 border-dash-700">
+                <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Integração</p>
+                @php $enabled = \App\Models\Setting::getValue('asaas_enabled', 'false') === 'true'; @endphp
+                <div class="flex items-center space-x-3">
+                    @if($enabled)
+                        <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                        <span class="text-sm font-bold text-emerald-400">Ativa (Recebendo)</span>
+                    @else
+                        <span class="w-3 h-3 rounded-full bg-gray-500"></span>
+                        <span class="text-sm font-bold text-gray-500">Inativa (Pausa)</span>
                     @endif
                 </div>
             </div>
@@ -61,10 +80,17 @@
                     <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
                         <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
                     </div>
-                    <div>
+                    <div class="flex-1">
                         <h4 class="text-lg font-bold text-white">Integração Asaas</h4>
                         <p class="text-xs text-gray-500">Configure sua API Key para receber pagamentos via PIX</p>
                     </div>
+                    <form action="{{ route('admin.financeiro.test') }}" method="POST">
+                        @csrf
+                        <button type="submit" class="flex items-center space-x-2 bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 px-4 py-2 rounded-xl text-[10px] font-bold hover:bg-indigo-600/20 transition">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            <span>Testar Conexão</span>
+                        </button>
+                    </form>
                 </div>
             </div>
             <form action="{{ route('admin.financeiro.save') }}" method="POST" class="p-10 space-y-8">
@@ -104,6 +130,52 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Tokens e Segurança</label>
+                        <div class="space-y-4">
+                            <div x-data="{ showToken: false }">
+                                <p class="text-[10px] text-gray-500 mb-2">Webhook Access Token (Opcional)</p>
+                                <div class="relative">
+                                    <input :type="showToken ? 'text' : 'password'" name="asaas_webhook_token" 
+                                        value="{{ \App\Models\Setting::getValue('asaas_webhook_token') }}"
+                                        class="w-full bg-[#0a0a0c] border border-white/5 rounded-2xl p-4 pr-12 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono text-sm"
+                                        placeholder="Seu token de segurança do webhook">
+                                    <button type="button" @click="showToken = !showToken" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition">
+                                        <svg x-show="!showToken" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                        <svg x-show="showToken" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-[10px] text-gray-500 mb-2">Sua Webhook URL (Copie para o Asaas)</p>
+                                <div class="bg-dash-900 border border-white/5 rounded-2xl p-4 flex items-center justify-between">
+                                    <code class="text-xs text-indigo-400 font-mono">{{ url('/api/v1/webhook') }}</code>
+                                    <button type="button" @click="navigator.clipboard.writeText('{{ url('/api/v1/webhook') }}'); alert('URL Copiada!')" class="text-gray-500 hover:text-white">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012-2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Opções Adicionais</label>
+                        <div class="glass p-6 rounded-3xl border-dash-700 bg-emerald-500/5">
+                            <label class="flex items-center justify-between cursor-pointer">
+                                <div>
+                                    <p class="text-sm font-bold text-white">Habilitar Pagamentos</p>
+                                    <p class="text-[10px] text-gray-500">Se desativado, o checkout via PIX será suspenso.</p>
+                                </div>
+                                <div class="relative inline-block w-12 h-6 transition duration-200 ease-in-out bg-gray-800 rounded-full">
+                                    <input type="checkbox" name="asaas_enabled" value="1" {{ $enabled ? 'checked' : '' }} class="opacity-0 w-0 h-0 peer">
+                                    <span class="absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-all peer-checked:translate-x-6 peer-checked:bg-emerald-500"></span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
 
                 <div class="pt-4 border-t border-white/5 flex items-center justify-between">
                     <p class="text-[10px] text-gray-600 max-w-sm">A chave é criptografada no banco de dados. Nunca compartilhe com terceiros.</p>

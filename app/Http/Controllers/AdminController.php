@@ -125,19 +125,48 @@ class AdminController extends Controller
         $request->validate([
             'asaas_key' => 'nullable|string',
             'asaas_mode' => 'required|in:sandbox,production',
-            'asaas_enabled' => 'nullable|boolean',
             'asaas_webhook_token' => 'nullable|string',
         ]);
 
         Setting::setValue('asaas_api_key', $request->asaas_key ?? '', 'asaas');
         Setting::setValue('asaas_mode', $request->asaas_mode, 'asaas');
-        Setting::setValue('asaas_enabled', $request->asaas_enabled ? 'true' : 'false', 'asaas');
+        Setting::setValue('asaas_enabled', $request->has('asaas_enabled') ? 'true' : 'false', 'asaas');
         
         if ($request->asaas_webhook_token) {
             Setting::setValue('asaas_webhook_token', $request->asaas_webhook_token, 'asaas');
         }
 
         return back()->with('success', 'Configurações financeiras salvas com sucesso!');
+    }
+
+    public function testAsaas()
+    {
+        $key = Setting::getValue('asaas_api_key');
+        $mode = Setting::getValue('asaas_mode', 'sandbox');
+
+        if (!$key) {
+            return back()->with('error', 'Configure a API Key antes de testar.');
+        }
+
+        try {
+            $baseUrl = $mode === 'production' 
+                ? 'https://www.asaas.com/api/v3' 
+                : 'https://sandbox.asaas.com/api/v3';
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'access_token' => $key,
+            ])->get("{$baseUrl}/index/stats");
+
+            if ($response->successful()) {
+                return back()->with('success', 'Conexão com Asaas estabelecida com sucesso! (Conta Ativa)');
+            }
+
+            $error = $response->json()['errors'][0]['description'] ?? 'Erro desconhecido na API do Asaas.';
+            return back()->with('error', 'Falha na conexão: ' . $error);
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Erro ao processar teste: ' . $e->getMessage());
+        }
     }
 
     /**
