@@ -42,10 +42,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
-          memory: 256M
+          cpus: '0.50'
+          memory: 1024M
         reservations:
-          memory: 64M
+          memory: 256M
 
   # Database MySQL
   db:
@@ -134,10 +134,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.20'
+          cpus: '0.50'
           memory: 256M
         reservations:
-          memory: 32M
+          memory: 64M
 
 volumes:
   storage-data:
