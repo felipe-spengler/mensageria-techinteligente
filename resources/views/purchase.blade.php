@@ -114,6 +114,20 @@
             });
 
             const result = await response.json();
+            
+            if (response.status === 422) {
+                let msg = 'Erro de validação:\n';
+                if (result.errors) {
+                    Object.values(result.errors).forEach(err => msg += `- ${err}\n`);
+                } else {
+                    msg = result.message || 'Dados inválidos.';
+                }
+                alert(msg);
+                btn.disabled = false;
+                btn.innerHTML = 'Gerar PIX de Pagamento';
+                return;
+            }
+
             if (result.success) {
                 // Exibe QR Code
                 const qrImg = document.getElementById('pixQr');
