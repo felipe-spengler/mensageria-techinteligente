@@ -54,9 +54,9 @@ class PlanController extends Controller
             $txid = 'PLAN-' . strtoupper(\Illuminate\Support\Str::random(8));
 
             // Tenta criar cobrança PIX no Asaas
-            $asaasApiKey = db_setting('asaas_api_key');
-            $asaasEnabled = db_setting('asaas_enabled', 'false') === 'true';
-            $asaasMode = db_setting('asaas_mode', 'sandbox');
+            $asaasApiKey = \App\Helpers\SettingsHelper::get('asaas_api_key');
+            $asaasEnabled = \App\Helpers\SettingsHelper::get('asaas_enabled', 'false') === 'true';
+            $asaasMode = \App\Helpers\SettingsHelper::get('asaas_mode', 'sandbox');
             
             $pixPayload = null;
             $qrCodeImage = null;

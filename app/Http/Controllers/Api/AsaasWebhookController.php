@@ -18,7 +18,7 @@ class AsaasWebhookController extends Controller
         Log::info('Asaas Webhook Received', ['event' => $event, 'payment_id' => $payment['id'] ?? null]);
 
         // Security: Check Webhook Token if configured
-        $storedToken = db_setting('asaas_webhook_token');
+        $storedToken = \App\Helpers\SettingsHelper::get('asaas_webhook_token');
         if ($storedToken && $request->header('asaas-access-token') !== $storedToken) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
