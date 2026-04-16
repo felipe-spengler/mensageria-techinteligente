@@ -212,7 +212,9 @@ class ManualSendController extends Controller
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
         return parent::getEloquentQuery();
-    }            private function requestBridge(string $path)
+    }
+
+    private function requestBridge(string $path)
     {
         $lastError = null;
 
