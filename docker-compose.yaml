@@ -12,6 +12,8 @@ services:
     depends_on:
       - db
       - redis
+    environment:
+      WPP_BRIDGE_URL: http://bridge:3000
     deploy:
       resources:
         limits:
@@ -31,6 +33,8 @@ services:
     depends_on:
       - redis
       - db
+    environment:
+      WPP_BRIDGE_URL: http://bridge:3000
     # command: passed as args to entrypoint.sh wrapper
     command: ["php", "artisan", "queue:work", "--tries=3", "--memory=128", "--max-jobs=200"]
     deploy:
