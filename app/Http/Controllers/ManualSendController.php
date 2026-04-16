@@ -238,10 +238,15 @@ class ManualSendController extends Controller
         throw new \RuntimeException('Bridge unreachable: ' . ($lastError ?: 'no URLs available'));
     }
 
-    public function getBridgeQrCode()
+    public function getBridgeQrCode(Request $request)
     {
+        $user = Auth::user();
+        $instance = \App\Models\WhatsappInstance::where('user_id', $user->id)->first();
+        
+        if (!$instance) return response('No instance', 404);
+
         try {
-            [$response, $url] = $this->requestBridge('qrcode');
+            [$response, $url] = $this->requestBridge('qrcode/' . $instance->session_name);
             return response($response->body(), 200)
                 ->header('Content-Type', 'image/png');
         } catch (\Exception $e) {
@@ -252,8 +257,13 @@ class ManualSendController extends Controller
 
     public function getBridgeStatus()
     {
+        $user = Auth::user();
+        $instance = \App\Models\WhatsappInstance::where('user_id', $user->id)->first();
+        
+        if (!$instance) return response()->json(['status' => 'offline']);
+
         try {
-            [$response, $url] = $this->requestBridge('status');
+            [$response, $url] = $this->requestBridge('status/' . $instance->session_name);
             $payload = $response->json();
             \Illuminate\Support\Facades\Log::debug('Bridge status payload', ['payload' => $payload]);
             return response()->json($payload);
@@ -331,15 +341,25 @@ class ManualSendController extends Controller
     private function pushToQueue($log): bool
     {
         try {
-            // O número já vem formatado do controller
             $to = $log->to;
+            
+            // Determine session
+            $session = 'mensageria-tech'; // fallback
+            if ($log->apiKey && $log->apiKey->user) {
+                $instance = \App\Models\WhatsappInstance::where('user_id', $log->apiKey->user_id)->first();
+                if ($instance) $session = $instance->session_name;
+            } elseif ($log->user_id) {
+                $instance = \App\Models\WhatsappInstance::where('user_id', $log->user_id)->first();
+                if ($instance) $session = $instance->session_name;
+            }
 
             $redis = \Illuminate\Support\Facades\Redis::connection();
-            $redis->rpush('wpp_messages', json_encode([
+            $redis->rpush('wpp_messages:' . $session, json_encode([
                 'log_id' => $log->id,
                 'to' => $to,
                 'message' => $log->message,
                 'media' => $log->media_url,
+                'session' => $session,
             ]));
 
             return true;

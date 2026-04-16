@@ -9,6 +9,7 @@ class MessageLog extends Model
 {
     protected $fillable = [
         'api_key_id',
+        'user_id',
         'to',
         'message',
         'media_url',
@@ -22,6 +23,11 @@ class MessageLog extends Model
     protected $casts = [
         'sent_at' => 'datetime',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function apiKey(): BelongsTo
     {

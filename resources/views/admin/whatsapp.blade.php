@@ -6,9 +6,56 @@
     <div class="flex flex-col items-center justify-center space-y-12 py-10" x-data="whatsappManager()">
         
         <div class="text-center max-w-xl mx-auto">
-            <h3 class="text-3xl font-bold text-white mb-4 tracking-tight">Vincule seu Dispositivo</h3>
-            <p class="text-gray-400 text-sm">Escaneie o QR Code abaixo com o seu celular para começar a enviar mensagens automaticamente via API. O status será atualizado em tempo real.</p>
+            <h3 class="text-3xl font-bold text-white mb-2 tracking-tight">Vincule seu Dispositivo</h3>
+            <p class="text-gray-400 text-sm mb-4">Sessão: <span class="text-blue-400 font-mono">{{ $instance->session_name }}</span></p>
+            <p class="text-gray-400 text-sm leading-relaxed">Escaneie o QR Code abaixo com o seu celular para começar a enviar mensagens via API. O status será atualizado em tempo real.</p>
         </div>
+
+        @php
+            $apiKey = Auth::user()->apiKeys()->where('status', 'active')->first();
+        @endphp
+
+        @if($apiKey)
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl px-4 mb-8">
+            <!-- API Key Card -->
+            <div class="glass rounded-3xl p-6 border-dash-700 shadow-xl flex flex-col justify-between">
+                <div>
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Sua API Key</h4>
+                    <div class="flex items-center space-x-3 bg-black/20 p-4 rounded-2xl border border-white/5">
+                        <code class="text-blue-400 font-mono text-sm break-all flex-1">{{ $apiKey->key }}</code>
+                        <button onclick="navigator.clipboard.writeText('{{ $apiKey->key }}')" class="text-gray-500 hover:text-white transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Schedule Card -->
+            <div class="glass rounded-3xl p-6 border-dash-700 shadow-xl">
+                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Horário de Envio</h4>
+                <form action="{{ route('admin.whatsapp.schedule') }}" method="POST" class="space-y-4">
+                    @csrf
+                    <div class="flex flex-col space-y-2">
+                        <label class="flex items-center space-x-3 cursor-pointer group">
+                            <input type="radio" name="schedule_type" value="full_time" @checked($instance->schedule_type === 'full_time') class="hidden peer" onchange="this.form.submit()">
+                            <div class="w-5 h-5 rounded-full border-2 border-gray-600 peer-checked:border-blue-500 peer-checked:bg-blue-500 transition-all flex items-center justify-center">
+                                <div class="w-2 h-2 rounded-full bg-white opacity-0 peer-checked:opacity-100"></div>
+                            </div>
+                            <span class="text-sm text-gray-400 group-hover:text-white transition-colors">24/7 (Full-time)</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer group">
+                            <input type="radio" name="schedule_type" value="business_hours" @checked($instance->schedule_type === 'business_hours') class="hidden peer" onchange="this.form.submit()">
+                            <div class="w-5 h-5 rounded-full border-2 border-gray-600 peer-checked:border-blue-500 peer-checked:bg-blue-500 transition-all flex items-center justify-center">
+                                <div class="w-2 h-2 rounded-full bg-white opacity-0 peer-checked:opacity-100"></div>
+                            </div>
+                            <span class="text-sm text-gray-400 group-hover:text-white transition-colors">Horário Comercial (Seg-Sex, 08h-18h)</span>
+                        </label>
+                    </div>
+                    <p class="text-[10px] text-gray-500 italic mt-2">Evita incomodar clientes em horários inapropriados.</p>
+                </form>
+            </div>
+        </div>
+        @endif
 
         <!-- Connection Status Card -->
         <div class="glass w-full max-w-lg rounded-[48px] p-12 border-dash-700 shadow-3xl text-center relative overflow-hidden">
@@ -56,14 +103,21 @@
                 </div>
 
                 <!-- Action Bar -->
-                <div class="mt-12 flex space-x-4">
-                    <button @click="refreshStatus" :disabled="loading" class="px-8 py-3 bg-dash-900 hover:bg-dash-800 border border-white/5 rounded-2xl text-[10px] font-bold text-gray-300 uppercase tracking-widest transition-all">
-                        <svg x-show="loading" class="animate-spin -ml-1 mr-3 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        <span>Atualizar</span>
-                    </button>
-                    <button x-show="status === 'CONNECTED'" @click="logoutWhatsApp" class="px-8 py-3 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 rounded-2xl text-[10px] font-bold text-red-400 uppercase tracking-widest transition-all">
-                        Desconectar
-                    </button>
+                <div class="mt-12 flex flex-col space-y-4 w-full">
+                    <div class="flex space-x-4 justify-center">
+                        <button @click="refreshStatus" :disabled="loading" class="px-8 py-3 bg-dash-900 hover:bg-dash-800 border border-white/5 rounded-2xl text-[10px] font-bold text-gray-300 uppercase tracking-widest transition-all">
+                            <svg x-show="loading" class="animate-spin -ml-1 mr-3 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span>Atualizar</span>
+                        </button>
+                        <template x-if="status === 'OFFLINE' || status === 'DISCONNECTED'">
+                            <button @click="startConnection" class="px-8 py-3 bg-blue-600 hover:bg-blue-700 rounded-2xl text-[10px] font-bold text-white uppercase tracking-widest transition-all">
+                                Iniciar Conexão
+                            </button>
+                        </template>
+                        <button x-show="status === 'CONNECTED'" @click="logoutWhatsApp" class="px-8 py-3 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 rounded-2xl text-[10px] font-bold text-red-400 uppercase tracking-widest transition-all">
+                            Desconectar
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -92,12 +146,30 @@
                     try {
                         const res = await fetch('/admin/bridge/status');
                         const data = await res.json();
-                        this.status = data.status || 'DISCONNECTED';
+                        this.status = (data.status || 'OFFLINE').toUpperCase();
                         
-                        if (this.status !== 'CONNECTED') {
+                        if (this.status === 'QR_READY') {
                             await this.fetchQrCode();
                         } else {
                             this.qrCode = null;
+                        }
+                    } catch(e) { console.error(e); }
+                    this.loading = false;
+                },
+
+                async startConnection() {
+                    this.loading = true;
+                    try {
+                        const res = await fetch('{{ route('admin.whatsapp.start') }}', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        if (res.ok) {
+                            this.status = 'INITIALIZING';
+                            setTimeout(() => this.refreshStatus(), 2000);
                         }
                     } catch(e) { console.error(e); }
                     this.loading = false;
@@ -109,18 +181,13 @@
                         if (res.ok && res.headers.get('content-type').includes('image/png')) {
                             const blob = await res.blob();
                             this.qrCode = URL.createObjectURL(blob);
-                        } else {
-                            const data = await res.json().catch(() => null);
-                            if (data && data.qrcode) {
-                                this.qrCode = data.qrcode;
-                            }
                         }
                     } catch(e) { console.error(e); }
                 },
 
                 async logoutWhatsApp() {
                     if (!confirm('Deseja realmente desconectar este WhatsApp?')) return;
-                    // Implement logic if needed
+                    // TODO: Implement bridge logout route if needed
                 }
             }
         }

@@ -39,14 +39,21 @@ class MessageController extends Controller
 
         // Check plan limits (Usage in current month)
         if ($apiKey->plan) {
-            // 1. Check if trying to send Media but plan is only Text
-            if (!empty($request->media) && $apiKey->plan->type !== 'media') {
-                $this->notifyUpgradeForMedia($apiKey);
-                return response()->json([
-                    'error' => 'Your current plan does not support media (Images/PDF). Please upgrade to a Media plan.',
-                    'current_plan' => $apiKey->plan->name
-                ], 403);
+            // 0. Check Schedule
+            $instance = \App\Models\WhatsappInstance::where('user_id', $apiKey->user_id)->first();
+            if ($instance && $instance->schedule_type === 'business_hours') {
+                $now = now();
+                $hour = $now->hour;
+                $day = $now->dayOfWeek; // 0 (Sun) to 6 (Sat)
+                
+                if ($day === 0 || $day === 6 || $hour < 8 || $hour >= 18) {
+                    return response()->json([
+                        'error' => 'Fora do horário comercial. Sua instância está configurada para enviar apenas de Seg-Sex das 08h às 18h.',
+                    ], 403);
+                }
             }
+
+            // 1. Check if trying to send Media but plan is only Text
 
             // 2. Check message limit
             $messageCount = MessageLog::where('api_key_id', $apiKey->id)
@@ -106,7 +113,7 @@ class MessageController extends Controller
     {
         if (!$apiKey->user || !$apiKey->user->phone) return;
 
-        $message = "📢 *Aviso de Uso*\n\nVocê já utilizou *{$count}* mensagens este mês. Isso representa *90%* do seu limite no plano *{$apiKey->plan->name}*.\n\nGaranta que seu serviço não seja interrompido fazendo um upgrade agora!";
+        $message = "📢 *Aviso de Uso TechInteligente*\n\nVocê já utilizou *{$count}* mensagens este mês. Isso representa *90%* do seu limite no plano *{$apiKey->plan->name}*.\n\nGaranta que seu serviço não seja interrompido fazendo um upgrade agora!";
         
         $this->pushRawToQueue($apiKey->user->wpp_phone, $message);
     }
@@ -118,10 +125,11 @@ class MessageController extends Controller
             if (!$redisTo) return; // Skip if invalid
 
             $redis = \Illuminate\Support\Facades\Redis::connection();
-            $redis->rpush('wpp_messages', json_encode([
+            $redis->rpush('wpp_messages:mensageria-tech', json_encode([
                 'to' => $redisTo,
                 'message' => $message,
-                'is_system_notification' => true
+                'is_system_notification' => true,
+                'session' => 'mensageria-tech' // Admin session
             ]));
         } catch (\Exception $e) {
             Log::error('Notification Redis Error: ' . $e->getMessage());
@@ -135,11 +143,17 @@ class MessageController extends Controller
             $to = $log->to;
 
             $redis = \Illuminate\Support\Facades\Redis::connection();
-            $redis->rpush('wpp_messages', json_encode([
+            
+            $session = 'mensageria-tech';
+            $instance = \App\Models\WhatsappInstance::where('user_id', $log->apiKey->user_id)->first();
+            if ($instance) $session = $instance->session_name;
+
+            $redis->rpush('wpp_messages:' . $session, json_encode([
                 'log_id' => $log->id,
                 'to' => $to,
                 'message' => $log->message,
                 'media' => $log->media_url,
+                'session' => $session
             ]));
         } catch (\Exception $e) {
             Log::error('Redis Error: ' . $e->getMessage());

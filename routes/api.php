@@ -10,5 +10,6 @@ Route::prefix('v1')->middleware('throttle:api-global')->group(function () {
             'throttle:api-send',
         ]);
     Route::post('/webhook/status', [\App\Http\Controllers\Api\WebhookController::class, 'status']);
+    Route::post('/webhook/instance-status', [\App\Http\Controllers\Api\WebhookController::class, 'instanceStatus']);
     Route::post('/webhook/asaas', [\App\Http\Controllers\Api\AsaasWebhookController::class, 'handle']);
 });

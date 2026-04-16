@@ -80,7 +80,29 @@ class AdminController extends Controller
      */
     public function whatsapp()
     {
-        return view('admin.whatsapp');
+        $user = Auth::user();
+        $instance = \App\Models\WhatsappInstance::firstOrCreate(
+            ['user_id' => $user->id],
+            ['session_name' => 'client_' . $user->id, 'status' => 'disconnected']
+        );
+
+        return view('admin.whatsapp', compact('instance'));
+    }
+
+    public function startWhatsapp()
+    {
+        $user = Auth::user();
+        $instance = \App\Models\WhatsappInstance::where('user_id', $user->id)->firstOrFail();
+        
+        // Call bridge to start
+        $bridgeUrl = env('WPP_BRIDGE_URL', 'http://bridge:3000');
+        try {
+            \Illuminate\Support\Facades\Http::post("{$bridgeUrl}/start/{$instance->session_name}");
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error starting bridge session: ' . $e->getMessage());
+        }
+
+        return back()->with('success', 'Iniciando conexão...');
     }
 
     /**
@@ -102,6 +124,20 @@ class AdminController extends Controller
 
         return back()->with('success', 'Configurações de Asaas salvas com sucesso!');
     }
+    public function updateSchedule(Request $request)
+    {
+        $user = Auth::user();
+        $instance = \App\Models\WhatsappInstance::where('user_id', $user->id)->firstOrFail();
+        
+        $request->validate([
+            'schedule_type' => 'required|in:full_time,business_hours',
+        ]);
+
+        $instance->update(['schedule_type' => $request->schedule_type]);
+
+        return back()->with('success', 'Configuração de horário atualizada!');
+    }
+
     /**
      * Financial Settings Page
      */

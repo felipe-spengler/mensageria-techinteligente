@@ -20,6 +20,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/api-keys', [\App\Http\Controllers\AdminController::class, 'apiKeys'])->name('admin.api_keys');
     Route::get('/admin/logs', [\App\Http\Controllers\AdminController::class, 'logs'])->name('admin.logs');
     Route::get('/admin/whatsapp', [\App\Http\Controllers\AdminController::class, 'whatsapp'])->name('admin.whatsapp');
+    Route::post('/admin/whatsapp/start', [\App\Http\Controllers\AdminController::class, 'startWhatsapp'])->name('admin.whatsapp.start');
+    Route::post('/admin/whatsapp/schedule', [\App\Http\Controllers\AdminController::class, 'updateSchedule'])->name('admin.whatsapp.schedule');
     Route::post('/admin/save-asaas', [\App\Http\Controllers\AdminController::class, 'saveAsaas'])->name('admin.asaas.save');
 
     // Financeiro
@@ -41,6 +43,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/bridge/qrcode', [ManualSendController::class, 'getBridgeQrCode']);
     Route::get('/admin/bridge/status', [ManualSendController::class, 'getBridgeStatus']);
 });
+
+Route::get('/documentacao', function() {
+    return view('docs');
+})->middleware(['auth'])->name('docs');
 
 Route::get('/bridge-health', [ManualSendController::class, 'getBridgeHealth']);
 Route::get('/precos', function() { return redirect('/'); });

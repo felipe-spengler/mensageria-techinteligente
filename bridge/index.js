@@ -7,11 +7,11 @@ require('dotenv').config();
 // ─────────────────────────────────────────────────────────────────────────────
 // PROTECTION CONFIG
 // ─────────────────────────────────────────────────────────────────────────────
-const HEAP_LIMIT_MB        = parseInt(process.env.HEAP_LIMIT_MB        || '1100');  // restart threshold (MB)
+const HEAP_LIMIT_MB        = parseInt(process.env.HEAP_LIMIT_MB        || '1400');  // boosted for production headroom
 const WATCHDOG_INTERVAL_MS = parseInt(process.env.WATCHDOG_INTERVAL_MS || '30000'); // check every 30s
 const AXIOS_TIMEOUT_MS     = parseInt(process.env.AXIOS_TIMEOUT_MS     || '30000'); // 30s per webhook call
-const QUEUE_MAX_SIZE       = parseInt(process.env.QUEUE_MAX_SIZE       || '5000');  // max Redis queue depth
-const RATE_LIMIT_MAX       = parseInt(process.env.RATE_LIMIT_MAX       || '5');     // max msgs per number/min
+const QUEUE_MAX_SIZE       = parseInt(process.env.QUEUE_MAX_SIZE       || '10000'); // increased queue depth
+const RATE_LIMIT_MAX       = parseInt(process.env.RATE_LIMIT_MAX       || '20');    // relaxed for pro use
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000'); // 1 min window
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -73,94 +73,139 @@ app.use(express.urlencoded({ extended: false, limit: '2mb' }));
 
 const redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
 
-let whatsappClient = null;
-let currentQRCode = null;
-let connectionStatus = 'initializing';
+// Map to store multiple WhatsApp clients
+const clients = new Map();
+const qrCodes = new Map();
+const connectionStatuses = new Map();
 let isShuttingDown = false;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WHATSAPP INIT
 // ─────────────────────────────────────────────────────────────────────────────
-async function initWhatsApp() {
-    connectionStatus = 'connecting';
-
-    // Remove stale Chromium profile locks left by previous container crashes.
-    // Without this, Chromium refuses to start with "profile in use" error (Code 21).
-    const fs = require('fs');
-    const path = require('path');
-    const sessionPath = path.join(__dirname, 'tokens', 'mensageria-tech');
-    
-    if (fs.existsSync(sessionPath)) {
-        const files = fs.readdirSync(sessionPath);
-        files.forEach(file => {
-            if (file.startsWith('Singleton')) {
-                try {
-                    fs.unlinkSync(path.join(sessionPath, file));
-                    console.log(`[BOOT] Removed stale lock: ${file}`);
-                } catch (e) {
-                    console.warn(`[BOOT] Could not remove ${file}:`, e.message);
-                }
-            }
-        });
+async function initWhatsApp(sessionName) {
+    if (clients.has(sessionName)) {
+        console.log(`[BOOT] Session ${sessionName} already exists.`);
+        return;
     }
 
-    whatsappClient = await wppconnect.create({
-        session: 'mensageria-tech',
-        catchQR: (base64Qr) => {
-            currentQRCode = base64Qr;
-            connectionStatus = 'qr_ready';
-            console.log('QR Code updated');
-        },
-        statusFind: (status) => {
-            connectionStatus = status;
-            console.log('Status updated:', status);
-        },
-        headless: true,
-        useChrome: true,
-        sessionTokenPath: './tokens',
-        puppeteerOptions: {
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--disable-extensions',
-                '--js-flags=--max-old-space-size=768', // restrict Chromium JS heap
-            ]
-        },
-        autoClose: false
-    });
+    connectionStatuses.set(sessionName, 'connecting');
+    console.log(`[BOOT] Initializing session: ${sessionName}`);
 
-    console.log('WhatsApp Client Ready!');
-    startMemoryWatchdog();
-    processQueue();
+    // Remove stale Chromium profile locks
+    const fs = require('fs');
+    const path = require('path');
+    const sessionPath = path.join(__dirname, 'tokens', sessionName);
+    
+    if (fs.existsSync(sessionPath)) {
+        try {
+            const files = fs.readdirSync(sessionPath);
+            files.forEach(file => {
+                if (file.startsWith('Singleton')) {
+                    try {
+                        fs.unlinkSync(path.join(sessionPath, file));
+                        console.log(`[BOOT] [${sessionName}] Removed stale lock: ${file}`);
+                    } catch (e) {}
+                }
+            });
+        } catch (e) {}
+    }
+
+    try {
+        const client = await wppconnect.create({
+            session: sessionName,
+            catchQR: (base64Qr) => {
+                qrCodes.set(sessionName, base64Qr);
+                connectionStatuses.set(sessionName, 'qr_ready');
+                console.log(`[${sessionName}] QR Code updated`);
+            },
+            statusFind: (status) => {
+                connectionStatuses.set(sessionName, status);
+                console.log(`[${sessionName}] Status updated:`, status);
+                notifyLaravelStatus(sessionName, status);
+            },
+            headless: true,
+            useChrome: true,
+            sessionTokenPath: './tokens',
+            puppeteerOptions: {
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu',
+                    '--disable-extensions',
+                    '--js-flags=--max-old-space-size=512', // lowered for multi-instance
+                ]
+            },
+            autoClose: false
+        });
+
+        clients.set(sessionName, client);
+        console.log(`[${sessionName}] WhatsApp Client Ready!`);
+        startWorker(sessionName);
+    } catch (err) {
+        console.error(`[${sessionName}] Error creating client:`, err.message);
+        connectionStatuses.set(sessionName, 'failed');
+        // Retry logic for stability: try again in 30s once
+        setTimeout(() => {
+            if (!clients.has(sessionName)) {
+                console.log(`[${sessionName}] Retrying initialization...`);
+                initWhatsApp(sessionName).catch(e => console.error(`[${sessionName}] Retry failed:`, e.message));
+            }
+        }, 30000);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OVERALL SESSION WATCHDOG
+// ─────────────────────────────────────────────────────────────────────────────
+function startSessionWatchdog() {
+    setInterval(async () => {
+        for (const [name, client] of clients.entries()) {
+            try {
+                const status = connectionStatuses.get(name);
+                if (status === 'disconnected' || status === 'closed') {
+                    console.log(`[WATCHDOG] Session ${name} is ${status}. Attempting restart.`);
+                    clients.delete(name);
+                    initWhatsApp(name);
+                }
+            } catch (e) {
+                console.warn(`[WATCHDOG] Failed to verify session ${name}:`, e.message);
+            }
+        }
+    }, 60000); // verify every minute
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // QUEUE PROCESSOR
 // ─────────────────────────────────────────────────────────────────────────────
-async function processQueue() {
+const activeWorkers = new Set();
+
+async function startWorker(sessionName) {
+    if (activeWorkers.has(sessionName)) return;
+    activeWorkers.add(sessionName);
+    
+    console.log(`[WORKER] [${sessionName}] Started.`);
+    const sessionKey = `wpp_messages:${sessionName}`;
+
     while (!isShuttingDown) {
         try {
-            // Safety: abort if queue is dangerously large (backpressure)
-            const queueLen = await redis.llen('wpp_messages');
-            if (queueLen > QUEUE_MAX_SIZE) {
-                console.warn(`[PROTECTION] Queue size ${queueLen} exceeds max ${QUEUE_MAX_SIZE}. Pausing 60s.`);
-                await new Promise(resolve => setTimeout(resolve, 60000));
-                continue;
+            const client = clients.get(sessionName);
+            if (!client) {
+                console.log(`[WORKER] [${sessionName}] Client lost. Stopping worker.`);
+                activeWorkers.delete(sessionName);
+                break;
             }
 
-            const data = await redis.blpop('wpp_messages', 5); // 5s timeout (non-blocking)
+            const data = await redis.blpop(sessionKey, 10); // 10s wait
             if (!data) continue;
 
             const message = JSON.parse(data[1]);
             const rawTo   = message.to || '';
-            console.log('Processing message to:', rawTo);
+            
+            console.log(`[WORKER] [${sessionName}] Sending message to: ${rawTo}`);
 
-            // Per-number rate limiting
             if (isRateLimited(rawTo)) {
-                console.warn(`[RATE-LIMIT] Dropping message to ${rawTo} – limit ${RATE_LIMIT_MAX}/${RATE_LIMIT_WINDOW_MS}ms reached.`);
-                await notifyLaravel(message.log_id, 'failed', 'Rate limit exceeded for this number');
+                await notifyLaravel(message.log_id, 'failed', 'Rate limit exceeded');
                 continue;
             }
 
@@ -168,33 +213,30 @@ async function processQueue() {
                 let to = rawTo;
                 if (!to.includes('@')) to = to + '@c.us';
 
-                // Timeout wrapper: 60s per send attempt
-                const sendTimeout = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Send timeout (60s)')), 60000)
-                );
-
                 const sendOp = message.media
-                    ? whatsappClient.sendFile(to, message.media, 'file', message.message)
-                    : whatsappClient.sendText(to, message.message);
+                    ? client.sendFile(to, message.media, 'file', message.message)
+                    : client.sendText(to, message.message);
 
-                await Promise.race([sendOp, sendTimeout]);
+                await Promise.race([
+                    sendOp,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Send timeout')), 60000))
+                ]);
 
-                console.log('Message sent successfully. Starting cooldown of 120s.');
                 await notifyLaravel(message.log_id, 'sent');
             } catch (error) {
-                console.error('Error sending message:', error.message);
-                await notifyLaravel(message.log_id, 'failed', error.message || 'Error sending');
+                console.error(`[WORKER] [${sessionName}] Error:`, error.message);
+                await notifyLaravel(message.log_id, 'failed', error.message);
             }
 
-            // Anti-ban cooldown: 120 s
-            await new Promise(resolve => setTimeout(resolve, 120000));
+            // Cooldown per-session: 2 seconds
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
         } catch (e) {
-            console.error('Queue processing error:', e.message);
+            console.error(`[WORKER] [${sessionName}] Loop error:`, e.message);
             await new Promise(resolve => setTimeout(resolve, 5000));
         }
     }
-    console.log('[SHUTDOWN] Queue processor stopped.');
+    activeWorkers.delete(sessionName);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -202,17 +244,9 @@ async function processQueue() {
 // ─────────────────────────────────────────────────────────────────────────────
 async function notifyLaravel(logId, status, error = null) {
     if (!logId) return;
-    
     try {
-        let url = process.env.WEBHOOK_URL;
-        if (!url || url === 'undefined') {
-            url = 'http://app/api/v1/webhook';
-        }
-        
-        const target = url.replace(/\/$/, '') + '/status';
-        console.log('Notifying Laravel status:', status, 'at', target);
-
-        await axios.post(target, {
+        const url = (process.env.WEBHOOK_URL || 'http://app/api/v1/webhook').replace(/\/$/, '') + '/status';
+        await axios.post(url, {
             log_id: logId,
             status: status,
             error_message: error
@@ -225,12 +259,31 @@ async function notifyLaravel(logId, status, error = null) {
     }
 }
 
+async function notifyLaravelStatus(session, status) {
+    try {
+        const url = (process.env.WEBHOOK_URL || 'http://app/api/v1/webhook').replace(/\/$/, '') + '/instance-status';
+        await axios.post(url, {
+            session: session,
+            status: status
+        }, {
+            timeout: AXIOS_TIMEOUT_MS,
+            headers: { 'Authorization': 'Bearer ' + (process.env.INTERNAL_KEY || '7caeb868-3d08-4761-b126-4f601cd05f7a') }
+        });
+    } catch (err) {
+        console.error('Failed to notify Laravel status:', err.message);
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ROUTES
 // ─────────────────────────────────────────────────────────────────────────────
-app.get('/qrcode', (req, res) => {
-    if (currentQRCode && connectionStatus === 'qr_ready') {
-        const base64Data = currentQRCode.replace(/^data:image\/png;base64,/, "");
+app.get('/qrcode/:session', (req, res) => {
+    const session = req.params.session;
+    const qr = qrCodes.get(session);
+    const status = connectionStatuses.get(session);
+
+    if (qr && status === 'qr_ready') {
+        const base64Data = qr.replace(/^data:image\/png;base64,/, "");
         const img = Buffer.from(base64Data, 'base64');
         res.writeHead(200, {
             'Content-Type': 'image/png',
@@ -238,29 +291,36 @@ app.get('/qrcode', (req, res) => {
         });
         res.end(img);
     } else {
-        res.status(404).json({ status: 'not_available', connection: connectionStatus });
+        res.status(404).json({ status: 'not_available', sessionStatus: status });
     }
 });
 
-app.get('/status', (req, res) => {
-    let status = (connectionStatus || '').toString().toLowerCase();
+app.get('/status/:session', (req, res) => {
+    const session = req.params.session;
+    let status = (connectionStatuses.get(session) || 'offline').toString().toLowerCase();
 
     if (['islogged', 'logged', 'authenticated', 'main', 'syncing'].includes(status)) {
         status = 'connected';
     }
     if (status.includes('qr')) {
-        status = status.replace(/[^a-z0-9_]/g, '');
-    }
-    if (['disconnected', 'disconnecting', 'failed'].includes(status)) {
-        status = 'disconnected';
+        status = 'qr_ready';
     }
 
     res.json({
         status,
-        has_client: !!whatsappClient,
-        connectionStatus: connectionStatus,
+        session,
+        has_client: clients.has(session),
         timestamp: new Date().toISOString()
     });
+});
+
+app.post('/start/:session', async (req, res) => {
+    const session = req.params.session;
+    if (clients.has(session)) {
+        return res.json({ status: 'already_running', session });
+    }
+    initWhatsApp(session); // async but we don't await full readiness
+    res.json({ status: 'initializing', session });
 });
 
 // Health endpoint for Docker HEALTHCHECK
@@ -291,8 +351,8 @@ function gracefulShutdown(signal) {
     console.log(`[SHUTDOWN] Received ${signal}. Shutting down gracefully…`);
     isShuttingDown = true;
     redis.disconnect();
-    if (whatsappClient) {
-        try { whatsappClient.close(); } catch (_) {}
+    for (const [name, client] of clients.entries()) {
+        try { client.close(); } catch (_) {}
     }
     setTimeout(() => process.exit(0), 3000);
 }
@@ -314,7 +374,9 @@ process.on('unhandledRejection', (reason) => {
 // ─────────────────────────────────────────────────────────────────────────────
 app.listen(port, '0.0.0.0', () => {
     console.log(`Bridge HTTP server running on port ${port}`);
-    console.log(`[PROTECTION] Heap limit: ${HEAP_LIMIT_MB} MB | Rate limit: ${RATE_LIMIT_MAX} msgs/${RATE_LIMIT_WINDOW_MS}ms | Queue max: ${QUEUE_MAX_SIZE}`);
+    startMemoryWatchdog();
+    startSessionWatchdog(); // Extra slack: monitor all sessions
 });
 
-initWhatsApp();
+// For backward compatibility or master session
+initWhatsApp('mensageria-tech');
