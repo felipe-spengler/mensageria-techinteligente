@@ -67,4 +67,14 @@ class User extends Authenticatable implements FilamentUser
             'is_admin' => 'boolean',
         ];
     }
+
+    public function apiKeys()
+    {
+        return $this->hasMany(ApiKey::class);
+    }
+
+    public function whatsappInstance()
+    {
+        return $this->hasOne(WhatsappInstance::class);
+    }
 }
