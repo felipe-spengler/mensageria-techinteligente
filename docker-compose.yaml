@@ -16,6 +16,8 @@ services:
         condition: service_started
     environment:
       WPP_BRIDGE_URL: http://bridge:3000
+    networks:
+      - mensageria-net
     deploy:
       resources:
         limits:
@@ -39,6 +41,8 @@ services:
       WPP_BRIDGE_URL: http://bridge:3000
     # command: passed as args to entrypoint.sh wrapper
     command: ["php", "artisan", "queue:work", "--tries=3", "--memory=128", "--max-jobs=200"]
+    networks:
+      - mensageria-net
     deploy:
       resources:
         limits:
@@ -67,6 +71,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - mensageria-net
     deploy:
       resources:
         limits:
@@ -83,6 +89,8 @@ services:
       PMA_HOST: db
     ports:
       - "127.0.0.1:8085:80" # Somente local/SSH
+    networks:
+      - mensageria-net
     deploy:
       resources:
         limits:
@@ -103,16 +111,21 @@ services:
     depends_on:
       - redis
     environment:
-      HEAP_LIMIT_MB: '768'         # lowered to fit in 4GB VPS
-      QUEUE_MAX_SIZE: '10000'      # increased queue depth
-      RATE_LIMIT_MAX: '20'         # relaxed for pro use
-      AXIOS_TIMEOUT_MS: '30000'    # 30 s timeout for Laravel webhook calls
+      REDIS_URL: redis://redis:6379
+      WEBHOOK_URL: http://app/api/v1/webhook
+      INTERNAL_KEY: 7caeb868-3d08-4761-b126-4f601cd05f7a
+      HEAP_LIMIT_MB: '768'
+      QUEUE_MAX_SIZE: '10000'
+      RATE_LIMIT_MAX: '20'
+      AXIOS_TIMEOUT_MS: '30000'
     healthcheck:
       test: [ "CMD", "wget", "-qO-", "http://localhost:3000/health" ]
       interval: 30s
       timeout: 10s
       start_period: 60s
       retries: 3
+    networks:
+      - mensageria-net
     deploy:
       resources:
         limits:
@@ -131,6 +144,8 @@ services:
     volumes:
       - redis-data:/data
     restart: always
+    networks:
+      - mensageria-net
     deploy:
       resources:
         limits:
@@ -138,6 +153,10 @@ services:
           memory: 256M
         reservations:
           memory: 64M
+
+networks:
+  mensageria-net:
+    driver: bridge
 
 volumes:
   storage-data:

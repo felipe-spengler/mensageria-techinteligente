@@ -123,17 +123,22 @@ async function initWhatsApp(sessionName) {
                 console.log(`[${sessionName}] Status updated:`, status);
                 notifyLaravelStatus(sessionName, status);
             },
-            headless: true,
+            headless: 'new', // Use newer headless mode
             useChrome: true,
+            protocolTimeout: 0, // Disable timeout for initialization
             sessionTokenPath: './tokens',
             puppeteerOptions: {
+                userDataDir: sessionPath,
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
                     '--disable-dev-shm-usage',
                     '--disable-gpu',
                     '--disable-extensions',
-                    '--js-flags=--max-old-space-size=512', // lowered for multi-instance
+                    '--disable-web-security',
+                    '--no-first-run',
+                    '--no-default-browser-check',
+                    '--js-flags=--max-old-space-size=512',
                 ]
             },
             autoClose: false
