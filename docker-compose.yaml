@@ -97,9 +97,9 @@ services:
     depends_on:
       - redis
     environment:
-      HEAP_LIMIT_MB: '1100'        # watchdog threshold (MB)
-      QUEUE_MAX_SIZE: '5000'       # max Redis queue depth before pausing
-      RATE_LIMIT_MAX: '5'          # max messages per number per minute
+      HEAP_LIMIT_MB: '1400'        # boosted for production headroom
+      QUEUE_MAX_SIZE: '10000'      # increased queue depth
+      RATE_LIMIT_MAX: '20'         # relaxed for pro use
       AXIOS_TIMEOUT_MS: '30000'    # 30 s timeout for Laravel webhook calls
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
@@ -110,8 +110,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1536M
+          cpus: '2.0'
+          memory: 2560M
         reservations:
           memory: 256M
 
