@@ -46,7 +46,7 @@
         <div class="hidden md:flex gap-8 text-sm font-medium text-gray-400">
             <a href="/enviar" class="hover:text-white transition">Envio Particular</a>
             <a href="#planos" class="hover:text-white transition">Preços</a>
-            <a href="#github" class="hover:text-white transition">Open Source</a>
+            <a href="{{ route('docs') }}" class="hover:text-white transition">Documentação</a>
             @auth
                 <a href="/admin" class="text-blue-400 font-bold hover:text-blue-300 transition">Meu Painel</a>
             @else
