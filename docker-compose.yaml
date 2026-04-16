@@ -10,17 +10,19 @@ services:
     volumes:
       - storage-data:/var/www/html/storage
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       WPP_BRIDGE_URL: http://bridge:3000
     deploy:
       resources:
         limits:
           cpus: '0.50'
-          memory: 512M
+          memory: 1024M
         reservations:
-          memory: 128M
+          memory: 256M
 
   # Laravel Background Worker
   worker:
@@ -69,9 +71,9 @@ services:
       resources:
         limits:
           cpus: '0.50'
-          memory: 512M
+          memory: 1024M
         reservations:
-          memory: 128M
+          memory: 256M
 
   # PhpMyAdmin
   phpmyadmin:
@@ -133,7 +135,7 @@ services:
       resources:
         limits:
           cpus: '0.20'
-          memory: 128M
+          memory: 256M
         reservations:
           memory: 32M
 
