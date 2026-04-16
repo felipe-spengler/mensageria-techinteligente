@@ -85,14 +85,25 @@
                     <div x-show="qrCode" class="w-64 h-64 flex items-center justify-center overflow-hidden">
                         <img :src="qrCode" alt="QR Code WhatsApp" class="w-full h-full object-contain">
                     </div>
+                    
                     <div x-show="!qrCode" class="w-64 h-64 flex flex-col items-center justify-center space-y-4">
-                        <div x-show="status === 'INITIALIZING' || status === 'CONNECTING'" class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-                        <p x-show="status === 'INITIALIZING' || status === 'CONNECTING'" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">Gerando Código<br><span class="text-[8px] opacity-50">Aguarde...</span></p>
+                        <!-- Mostra o spinner se estiver inicializando ou se o status for QR_READY mas a imagem ainda não baixou -->
+                        <template x-if="status === 'INITIALIZING' || status === 'CONNECTING' || (status === 'QR_READY' && !qrCode)">
+                            <div class="flex flex-col items-center">
+                                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
+                                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">Gerando Código<br><span class="text-[8px] opacity-50">Isso pode levar até 30s...</span></p>
+                            </div>
+                        </template>
                         
-                        <div x-show="status === 'OFFLINE' || status === 'DISCONNECTED'" class="bg-blue-600/10 p-4 rounded-full mb-2">
-                             <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                        </div>
-                        <p x-show="status === 'OFFLINE' || status === 'DISCONNECTED'" class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Pronto para Conectar</p>
+                        <!-- Mostra apenas o ícone de pronto se estiver totalmente offline -->
+                        <template x-if="(status === 'OFFLINE' || status === 'DISCONNECTED') && !loading">
+                            <div class="flex flex-col items-center">
+                                <div class="bg-blue-600/10 p-4 rounded-full mb-2">
+                                     <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                                </div>
+                                <p class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Pronto para Conectar</p>
+                            </div>
+                        </template>
                     </div>
                 </div>
 
