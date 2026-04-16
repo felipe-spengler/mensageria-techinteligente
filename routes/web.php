@@ -47,7 +47,7 @@ Route::middleware(['auth'])->group(function () {
 
 Route::get('/documentacao', function() {
     return view('docs');
-})->middleware(['auth'])->name('docs');
+})->name('docs');
 
 Route::get('/bridge-health', [ManualSendController::class, 'getBridgeHealth']);
 Route::get('/precos', function() { return redirect('/'); });
