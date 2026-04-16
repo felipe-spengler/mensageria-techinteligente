@@ -31,5 +31,11 @@ php artisan migrate --force --seed
 # Publish Filament assets to fix 404s
 php artisan filament:assets
 
-# Start Apache in foreground
-apache2-foreground
+# If arguments are passed, execute them (for worker/etc), else start Apache
+if [ "$#" -gt 0 ]; then
+    echo "Executing command: $@"
+    exec "$@"
+else
+    echo "Starting Apache..."
+    exec apache2-foreground
+fi

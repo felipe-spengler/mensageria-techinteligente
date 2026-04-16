@@ -31,9 +31,8 @@ services:
     depends_on:
       - redis
       - db
-    # --memory:   graceful restart if PHP heap > 256 MB (prevents gradual memory leaks)
-    # --max-jobs: restart after 500 jobs (reclaims any accumulated memory)
-    entrypoint: [ "php", "artisan", "queue:work", "--tries=3", "--memory=256", "--max-jobs=500" ]
+    # command: passed as args to entrypoint.sh wrapper
+    command: ["php", "artisan", "queue:work", "--tries=3", "--memory=128", "--max-jobs=200"]
     deploy:
       resources:
         limits:
@@ -57,8 +56,11 @@ services:
       --max_connections=100 --innodb_buffer_pool_size=128M --table_open_cache=200
     volumes:
       - db-data-v2:/var/lib/mysql
-    ports:
-      - "127.0.0.1:3307:3306" # Somente local/SSH
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     deploy:
       resources:
         limits:
@@ -95,10 +97,10 @@ services:
     depends_on:
       - redis
     environment:
-      HEAP_LIMIT_MB: '1600' # boosted for production headroom
-      QUEUE_MAX_SIZE: '10000' # increased queue depth
-      RATE_LIMIT_MAX: '20' # relaxed for pro use
-      AXIOS_TIMEOUT_MS: '30000' # 30 s timeout for Laravel webhook calls
+      HEAP_LIMIT_MB: '768'         # lowered to fit in 4GB VPS
+      QUEUE_MAX_SIZE: '10000'      # increased queue depth
+      RATE_LIMIT_MAX: '20'         # relaxed for pro use
+      AXIOS_TIMEOUT_MS: '30000'    # 30 s timeout for Laravel webhook calls
     healthcheck:
       test: [ "CMD", "wget", "-qO-", "http://localhost:3000/health" ]
       interval: 30s
@@ -108,8 +110,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
-          memory: 2560M
+          cpus: '1.0'
+          memory: 1024M
         reservations:
           memory: 256M
 
