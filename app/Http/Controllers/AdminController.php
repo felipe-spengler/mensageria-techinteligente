@@ -41,6 +41,11 @@ class AdminController extends Controller
         return view('admin.index', compact('stats'));
     }
 
+    public function tester()
+    {
+        return view('admin.tester');
+    }
+
     /**
      * API Keys & Payments Page
      */

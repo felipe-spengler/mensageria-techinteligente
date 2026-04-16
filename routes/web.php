@@ -20,6 +20,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/api-keys', [\App\Http\Controllers\AdminController::class, 'apiKeys'])->name('admin.api_keys');
     Route::get('/admin/logs', [\App\Http\Controllers\AdminController::class, 'logs'])->name('admin.logs');
     Route::get('/admin/whatsapp', [\App\Http\Controllers\AdminController::class, 'whatsapp'])->name('admin.whatsapp');
+    Route::get('/admin/tester', [\App\Http\Controllers\AdminController::class, 'tester'])->name('admin.tester');
     Route::post('/admin/whatsapp/start', [\App\Http\Controllers\AdminController::class, 'startWhatsapp'])->name('admin.whatsapp.start');
     Route::post('/admin/whatsapp/schedule', [\App\Http\Controllers\AdminController::class, 'updateSchedule'])->name('admin.whatsapp.schedule');
     Route::post('/admin/save-asaas', [\App\Http\Controllers\AdminController::class, 'saveAsaas'])->name('admin.asaas.save');
