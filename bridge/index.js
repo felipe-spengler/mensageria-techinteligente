@@ -338,7 +338,7 @@ app.get('/health', async (req, res) => {
         rss_mb:         parseFloat(rssMB),
         queue_depth:    queueLen,
         queue_max:      QUEUE_MAX_SIZE,
-        connection:     connectionStatus,
+        connection:     connectionStatuses.get('mensageria-tech') || 'offline',
         uptime_s:       Math.floor(process.uptime()),
         shuttingDown:   isShuttingDown,
     });
