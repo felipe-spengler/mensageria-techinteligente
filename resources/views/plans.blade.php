@@ -44,7 +44,6 @@
         
         <!-- Desktop Menu -->
         <div class="hidden md:flex gap-8 text-sm font-medium text-gray-400">
-            <a href="/enviar" class="hover:text-white transition">Envio Particular</a>
             <a href="#planos" class="hover:text-white transition">Preços</a>
             <a href="{{ route('docs') }}" class="hover:text-white transition">Documentação</a>
             @auth
@@ -70,7 +69,6 @@
             <button onclick="toggleMobileMenu()" class="absolute top-8 right-8 text-gray-400 hover:text-white">
                 <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
-            <a href="/enviar" onclick="toggleMobileMenu()" class="hover:text-blue-500 transition">Envio Particular</a>
             <a href="#planos" onclick="toggleMobileMenu()" class="hover:text-blue-500 transition">Preços</a>
             <a href="/admin/login" onclick="toggleMobileMenu()" class="hover:text-blue-500 transition">Login</a>
             <a href="#planos" onclick="toggleMobileMenu()" class="bg-blue-600 text-white px-8 py-3 rounded-full">Começar Agora</a>
