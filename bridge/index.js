@@ -119,9 +119,15 @@ async function initWhatsApp(sessionName) {
                 console.log(`[${sessionName}] QR Code updated`);
             },
             statusFind: (status) => {
-                connectionStatuses.set(sessionName, status);
-                console.log(`[${sessionName}] Status updated:`, status);
-                notifyLaravelStatus(sessionName, status);
+                // Map status to a clean format before saving/notifying
+                let cleanStatus = status.toString().toLowerCase();
+                if (['islogged', 'logged', 'authenticated', 'main', 'syncing', 'connected'].includes(cleanStatus)) {
+                    cleanStatus = 'connected';
+                }
+                
+                connectionStatuses.set(sessionName, cleanStatus);
+                console.log(`[${sessionName}] Status updated:`, cleanStatus);
+                notifyLaravelStatus(sessionName, cleanStatus);
             },
             headless: 'new', // Use newer headless mode
             useChrome: false,
@@ -158,6 +164,36 @@ async function initWhatsApp(sessionName) {
                 initWhatsApp(sessionName).catch(e => console.error(`[${sessionName}] Retry failed:`, e.message));
             }
         }, 30000);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BOOTUP: LOAD ALL EXISTING SESSIONS
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadExistingSessions() {
+    const fs = require('fs');
+    const path = require('path');
+    const tokensPath = path.join(__dirname, 'tokens');
+
+    if (!fs.existsSync(tokensPath)) {
+        fs.mkdirSync(tokensPath, { recursive: true });
+        return;
+    }
+
+    const entries = fs.readdirSync(tokensPath, { withFileTypes: true });
+    const sessions = entries
+        .filter(dirent => dirent.isDirectory())
+        .map(dirent => dirent.name);
+
+    console.log(`[BOOT] Found ${sessions.length} existing sessions to load.`);
+
+    for (const session of sessions) {
+        // Ignora a sessão master pois ela será iniciada manualmente ao final
+        if (session === 'mensageria-tech') continue;
+        
+        // Pequeno delay entre inícios para não sobrecarregar CPU no boot
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        initWhatsApp(session).catch(e => console.error(`[BOOT] Failed to load ${session}:`, e.message));
     }
 }
 
@@ -382,6 +418,7 @@ app.listen(port, '0.0.0.0', () => {
     console.log(`Bridge HTTP server running on port ${port}`);
     startMemoryWatchdog();
     startSessionWatchdog(); // Extra slack: monitor all sessions
+    loadExistingSessions(); // Auto-load all previous sessions
 });
 
 // For backward compatibility or master session
