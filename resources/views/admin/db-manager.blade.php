@@ -3,7 +3,7 @@
 @section('title', 'Gerenciador de Banco de Dados')
 
 @section('content')
-<div class="flex flex-col md:flex-row gap-8 min-h-[70vh]" x-data="{ editing: null, newData: {} }">
+<div class="flex flex-col md:flex-row gap-8 min-h-[70vh]" x-data="{ editing: null, showModal: false, columns: {{ json_encode($columns) }} }">
     
     <!-- Sidebar: Tabelas -->
     <div class="w-full md:w-64 space-y-2">
@@ -25,7 +25,9 @@
                     <h3 class="text-2xl font-bold text-white capitalize">{{ str_replace('_', ' ', $table) }}</h3>
                     <p class="text-gray-400 text-xs mt-1">Gerenciamento direto de registros</p>
                 </div>
-                <!-- NOVO REGISTRO (Placeholder for now, keeping it simple) -->
+                <button @click="editing = {}; showModal = true" class="btn-grad px-6 py-3 rounded-2xl text-xs font-bold text-white shadow-lg shadow-blue-900/20">
+                    + Novo Registro
+                </button>
             </div>
 
             <div class="glass rounded-[32px] overflow-hidden border-dash-700 shadow-2xl overflow-x-auto">
@@ -48,6 +50,13 @@
                                 @endforeach
                                 <td class="p-4 text-right">
                                     <div class="flex items-center justify-end space-x-2">
+                                        <!-- EDIT BUTTON -->
+                                        <button @click="editing = {{ json_encode($row) }}; showModal = true" 
+                                                class="p-2 bg-blue-500/10 text-blue-500 rounded-xl hover:bg-blue-500/20 transition">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                        </button>
+
+                                        <!-- DELETE BUTTON -->
                                         <form action="{{ route('admin.db_manager.delete', [$table, $row->id]) }}" method="POST" onsubmit="return confirm('Tem certeza? Essa ação é irreversível.')">
                                             @csrf
                                             @method('DELETE')
@@ -75,6 +84,33 @@
                 <p class="text-gray-500 text-sm max-w-xs">Escolha uma tabela ao lado para visualizar e gerenciar os dados brutos do sistema.</p>
             </div>
         @endif
+    </div>
+
+    <!-- Edit/Add Modal -->
+    <div x-show="showModal" class="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-dash-950/80 backdrop-blur-sm" x-cloak>
+        <div class="glass w-full max-w-2xl rounded-[40px] p-10 border-dash-700 shadow-3xl overflow-y-auto max-h-[90vh]">
+            <div class="flex items-center justify-between mb-8">
+                <h3 class="text-xl font-bold text-white" x-text="editing && editing.id ? 'Editar Registro #' + editing.id : 'Novo Registro'"></h3>
+                <button @click="showModal = false" class="text-gray-500 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            
+            <form :action="'/admin/db-manager/{{ $table }}/' + (editing && editing.id ? editing.id : '')" method="POST" class="space-y-6">
+                @csrf
+                <template x-for="col in columns">
+                    <div x-show="col !== 'id' && col !== 'created_at' && col !== 'updated_at'">
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2" x-text="col"></label>
+                        <input type="text" :name="col" :value="editing ? editing[col] : ''" 
+                               class="w-full bg-dash-950 border border-white/5 rounded-2xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                    </div>
+                </template>
+
+                <div class="pt-6">
+                    <button type="submit" class="w-full btn-grad py-5 rounded-3xl font-bold text-sm shadow-xl shadow-blue-900/30">
+                        Confirmar Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 

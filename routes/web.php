@@ -47,6 +47,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Database Manager (Raw)
     Route::get('/admin/db-manager/{table?}', [\App\Http\Controllers\DatabaseManagerController::class, 'index'])->name('admin.db_manager');
+    Route::post('/admin/db-manager/{table}/{id?}', [\App\Http\Controllers\DatabaseManagerController::class, 'save'])->name('admin.db_manager.save');
     Route::delete('/admin/db-manager/{table}/{id}', [\App\Http\Controllers\DatabaseManagerController::class, 'delete'])->name('admin.db_manager.delete');
 });
 

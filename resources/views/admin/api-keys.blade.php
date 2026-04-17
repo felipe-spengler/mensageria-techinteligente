@@ -38,7 +38,8 @@
                             <tr class="bg-dash-900/50 border-b border-white/5">
                                 <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Plano/Usuário</th>
                                 <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest">API Key (Secreta)</th>
-                                <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Status</th>
+                                <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Ações</th>
+                                <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Status</th>
                                 <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Expiração</th>
                             </tr>
                         </thead>
@@ -64,16 +65,19 @@
                                             </button>
                                         </div>
                                     </td>
-                                        @if(auth()->user()->isAdmin())
-                                            <form action="{{ route('admin.api_keys.destroy', $key) }}" method="POST" onsubmit="return confirm('Deletar esta chave?');">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="text-gray-500 hover:text-red-400 p-2 ml-2 transition">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                                </button>
-                                            </form>
-                                        @endif
+                                    <td class="px-8 py-6">
+                                        <div class="flex items-center space-x-2">
+                                            @if(auth()->user()->isAdmin())
+                                                <form action="{{ route('admin.api_keys.destroy', $key) }}" method="POST" onsubmit="return confirm('Deletar esta chave?');">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" class="text-gray-500 hover:text-red-400 p-2 transition">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        </div>
                                     </td>
-                                    <td class="px-8 py-6 text-sm">
+                                    <td class="px-8 py-6 text-sm text-center">
                                         @if($key->status === 'active')
                                             <span class="inline-flex items-center px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wide">Ativa</span>
                                         @else
@@ -98,66 +102,66 @@
                 </div>
             @endif
         </div>
-    </div>
 
-    <!-- Asaas Modal -->
-    <div x-show="asaasModal" class="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-dash-950/80 backdrop-blur-sm" x-cloak>
-        <div class="glass w-full max-w-lg rounded-[40px] p-10 border-dash-700 shadow-3xl" @click.away="asaasModal = false">
-            <div class="flex items-center justify-between mb-8">
-                <h3 class="text-xl font-bold text-white">Configuração Asaas Master</h3>
-                <button @click="asaasModal = false" class="text-gray-500 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l18 18"></path></svg></button>
+        <!-- Asaas Modal -->
+        <div x-show="asaasModal" class="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-dash-950/80 backdrop-blur-sm" x-cloak>
+            <div class="glass w-full max-w-lg rounded-[40px] p-10 border-dash-700 shadow-3xl" @click.away="asaasModal = false">
+                <div class="flex items-center justify-between mb-8">
+                    <h3 class="text-xl font-bold text-white">Configuração Asaas Master</h3>
+                    <button @click="asaasModal = false" class="text-gray-500 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l18 18"></path></svg></button>
+                </div>
+                
+                <form action="{{ route('admin.asaas.save') }}" method="POST" class="space-y-6">
+                    @csrf
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Asaas API Key (Produção ou Sandbox)</label>
+                        <input type="password" name="asaas_key" value="{{ \App\Models\Setting::getValue('asaas_api_key') }}" required class="w-full bg-dash-950 border border-white/5 rounded-2xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Ambiente</label>
+                        <select name="asaas_mode" class="w-full bg-dash-950 border border-white/5 rounded-2xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none transition-all">
+                            <option value="sandbox" {{ \App\Models\Setting::getValue('asaas_mode') === 'sandbox' ? 'selected' : '' }}>Sandbox (Testes)</option>
+                            <option value="production" {{ \App\Models\Setting::getValue('asaas_mode') === 'production' ? 'selected' : '' }}>Produção (Real)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full btn-grad py-5 rounded-3xl font-bold text-sm shadow-xl shadow-blue-900/30">Salvar Configurações</button>
+                </form>
             </div>
-            
-            <form action="{{ route('admin.asaas.save') }}" method="POST" class="space-y-6">
-                @csrf
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Asaas API Key (Produção ou Sandbox)</label>
-                    <input type="password" name="asaas_key" value="{{ \App\Models\Setting::getValue('asaas_api_key') }}" required class="w-full bg-dash-950 border border-white/5 rounded-2xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
-                </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Ambiente</label>
-                    <select name="asaas_mode" class="w-full bg-dash-950 border border-white/5 rounded-2xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none transition-all">
-                        <option value="sandbox" {{ \App\Models\Setting::getValue('asaas_mode') === 'sandbox' ? 'selected' : '' }}>Sandbox (Testes)</option>
-                        <option value="production" {{ \App\Models\Setting::getValue('asaas_mode') === 'production' ? 'selected' : '' }}>Produção (Real)</option>
-                    </select>
-                </div>
-                <button type="submit" class="w-full btn-grad py-5 rounded-3xl font-bold text-sm shadow-xl shadow-blue-900/30">Salvar Configurações</button>
-            </form>
         </div>
-    </div>
 
-    <!-- Key Modal -->
-    <div x-show="keyModal" class="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-dash-950/80 backdrop-blur-sm" x-cloak>
-        <div class="glass w-full max-w-lg rounded-[40px] p-10 border-dash-700 shadow-3xl" @click.away="keyModal = false">
-            <div class="flex items-center justify-between mb-8">
-                <h3 class="text-xl font-bold text-white">Gerar Nova Chave</h3>
-                <button @click="keyModal = false" class="text-gray-500 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l18 18"></path></svg></button>
-            </div>
-            
-            <form action="{{ route('admin.api_keys.store') }}" method="POST" class="space-y-6">
-                @csrf
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Plano Associado</label>
-                    <select name="plan_id" required class="w-full bg-dash-950 border border-white/5 rounded-2xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none transition-all">
-                        @foreach(\App\Models\Plan::all() as $p)
-                            <option value="{{ $p->id }}">{{ $p->name }}</option>
-                        @endforeach
-                    </select>
+        <!-- Key Modal -->
+        <div x-show="keyModal" class="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-dash-950/80 backdrop-blur-sm" x-cloak>
+            <div class="glass w-full max-w-lg rounded-[40px] p-10 border-dash-700 shadow-3xl" @click.away="keyModal = false">
+                <div class="flex items-center justify-between mb-8">
+                    <h3 class="text-xl font-bold text-white">Gerar Nova Chave</h3>
+                    <button @click="keyModal = false" class="text-gray-500 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l18 18"></path></svg></button>
                 </div>
-                <button type="submit" class="w-full btn-grad py-5 rounded-3xl font-bold text-sm shadow-xl shadow-blue-900/30">Criar Chave API</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- API Docs Modal -->
-    <div x-show="docsModal" class="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-dash-950/80 backdrop-blur-sm" x-cloak>
-        <div class="glass w-full max-w-2xl rounded-[40px] p-10 border-dash-700 shadow-3xl" @click.away="docsModal = false">
-            <div class="flex items-center justify-between mb-8">
-                <h3 class="text-xl font-bold text-white leading-tight">Documentação da API</h3>
-                <button @click="docsModal = false" class="text-gray-500 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l18 18"></path></svg></button>
+                
+                <form action="{{ route('admin.api_keys.store') }}" method="POST" class="space-y-6">
+                    @csrf
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Plano Associado</label>
+                        <select name="plan_id" required class="w-full bg-dash-950 border border-white/5 rounded-2xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none transition-all">
+                            @foreach(\App\Models\Plan::all() as $p)
+                                <option value="{{ $p->id }}">{{ $p->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full btn-grad py-5 rounded-3xl font-bold text-sm shadow-xl shadow-blue-900/30">Criar Chave API</button>
+                </form>
             </div>
-            
-            @include('components.api-docs-modal')
+        </div>
+
+        <!-- API Docs Modal -->
+        <div x-show="docsModal" class="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-dash-950/80 backdrop-blur-sm" x-cloak>
+            <div class="glass w-full max-w-2xl rounded-[40px] p-10 border-dash-700 shadow-3xl" @click.away="docsModal = false">
+                <div class="flex items-center justify-between mb-8">
+                    <h3 class="text-xl font-bold text-white leading-tight">Documentação da API</h3>
+                    <button @click="docsModal = false" class="text-gray-500 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l18 18"></path></svg></button>
+                </div>
+                
+                @include('components.api-docs-modal')
+            </div>
         </div>
     </div>
 @endsection

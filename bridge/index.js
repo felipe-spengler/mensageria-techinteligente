@@ -124,7 +124,8 @@ async function initWhatsApp(sessionName) {
                 notifyLaravelStatus(sessionName, status);
             },
             headless: 'new', // Use newer headless mode
-            useChrome: true,
+            useChrome: false,
+            executablePath: '/usr/bin/chromium',
             protocolTimeout: 0, // Disable timeout for initialization
             sessionTokenPath: './tokens',
             puppeteerOptions: {

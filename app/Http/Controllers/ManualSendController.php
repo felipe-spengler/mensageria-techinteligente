@@ -222,9 +222,14 @@ class ManualSendController extends Controller
             $url = rtrim($base, '/') . '/' . ltrim($path, '/');
             try {
                 \Illuminate\Support\Facades\Log::debug('Bridge request starting', ['path' => $path, 'url' => $url]);
-                $response = Http::timeout(5)->get($url);
+                $response = Http::timeout(30)->get($url);
+                Log::debug('Bridge request response', ['path' => $path, 'url' => $url, 'status' => $response->status()]);
+                
                 if ($response->successful()) {
-                    \Illuminate\Support\Facades\Log::debug('Bridge request succeeded', ['path' => $path, 'url' => $url, 'status' => $response->status()]);
+                    return [$response, $url];
+                }
+
+                if ($response->status() === 404) {
                     return [$response, $url];
                 }
 
@@ -250,6 +255,11 @@ class ManualSendController extends Controller
 
         try {
             [$response, $url] = $this->requestBridge('qrcode/' . $instance->session_name);
+            
+            if ($response->status() === 404) {
+                return response('QR Code not ready. Status: ' . ($response->json()['sessionStatus'] ?? 'unknown'), 404);
+            }
+
             return response($response->body(), 200)
                 ->header('Content-Type', 'image/png');
         } catch (\Exception $e) {
