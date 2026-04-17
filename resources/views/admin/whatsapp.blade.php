@@ -165,18 +165,28 @@
                 },
 
                 async refreshStatus() {
+                    if (this.status === 'CONNECTED' && this.loading) return;
                     this.loading = true;
                     try {
                         const res = await fetch('/admin/bridge/status');
                         const data = await res.json();
-                        this.status = (data.status || 'OFFLINE').toUpperCase();
+                        
+                        // Mapeamento amigável de status para a UI
+                        let newStatus = (data.status || 'OFFLINE').toUpperCase();
+                        const successStates = ['CONNECTED', 'ISLOGGED', 'LOGGED', 'AUTHENTICATED', 'SYNCING'];
+                        
+                        if (successStates.includes(newStatus)) {
+                            this.status = 'CONNECTED';
+                        } else {
+                            this.status = newStatus;
+                        }
                         
                         if (this.status === 'QR_READY') {
                             await this.fetchQrCode();
                         } else {
                             this.qrCode = null;
                         }
-                    } catch(e) { console.error(e); }
+                    } catch(e) { console.error('Status Error:', e.message); }
                     this.loading = false;
                 },
 
@@ -192,20 +202,33 @@
                         });
                         if (res.ok) {
                             this.status = 'INITIALIZING';
-                            setTimeout(() => this.refreshStatus(), 2000);
+                            // Intervalo mais rápido durante a inicialização
+                            let attempts = 0;
+                            const quickPoll = setInterval(async () => {
+                                await this.refreshStatus();
+                                attempts++;
+                                if (this.status === 'QR_READY' || this.status === 'CONNECTED' || attempts > 20) {
+                                    clearInterval(quickPoll);
+                                }
+                            }, 3000);
                         }
-                    } catch(e) { console.error(e); }
+                    } catch(e) { console.error('Start Error:', e.message); }
                     this.loading = false;
                 },
 
                 async fetchQrCode() {
+                    if (this.status === 'CONNECTED') return;
                     try {
                         const res = await fetch('/admin/bridge/qrcode');
                         if (res.ok && res.headers.get('content-type').includes('image/png')) {
                             const blob = await res.blob();
                             this.qrCode = URL.createObjectURL(blob);
+                        } else if (res.status === 404) {
+                            // Se o QR sumiu (404), pode ser que tenha acabado de conectar
+                            console.log('QR Code 404. Checking if connected...');
+                            this.refreshStatus();
                         }
-                    } catch(e) { console.error(e); }
+                    } catch(e) { console.error('QR Error:', e.message); }
                 },
 
                 async logoutWhatsApp() {
