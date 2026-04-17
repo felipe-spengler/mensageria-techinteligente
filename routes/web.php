@@ -31,6 +31,10 @@ Route::middleware(['auth'])->group(function () {
         // API Keys logic
         Route::post('/admin/api-keys', [\App\Http\Controllers\AdminController::class, 'storeApiKey'])->name('admin.api_keys.store');
         Route::delete('/admin/api-keys/{apiKey}', [\App\Http\Controllers\AdminController::class, 'destroyApiKey'])->name('admin.api_keys.destroy');
+
+        // Logs Control
+        Route::delete('/admin/logs/{log}', [\App\Http\Controllers\AdminController::class, 'destroyLog'])->name('admin.logs.destroy');
+        Route::post('/admin/logs/clear', [\App\Http\Controllers\AdminController::class, 'clearQueue'])->name('admin.logs.clear');
     });
 
     // Rotas Administrativas (Apenas Admin)

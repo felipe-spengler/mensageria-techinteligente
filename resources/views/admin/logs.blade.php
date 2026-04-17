@@ -16,6 +16,18 @@
             <a href="{{ route('admin.logs', ['status' => 'sent']) }}" class="px-4 py-2 rounded-xl text-xs font-bold {{ request('status') === 'sent' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20' : 'text-gray-500 hover:text-gray-300' }}">Sucesso</a>
             <a href="{{ route('admin.logs', ['status' => 'queued']) }}" class="px-4 py-2 rounded-xl text-xs font-bold {{ request('status') === 'queued' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300' }}">Na Fila</a>
             <a href="{{ route('admin.logs', ['status' => 'failed']) }}" class="px-4 py-2 rounded-xl text-xs font-bold {{ request('status') === 'failed' ? 'bg-red-600 text-white shadow-lg shadow-red-900/20' : 'text-gray-500 hover:text-gray-300' }}">Erro</a>
+
+            @if(auth()->user()->isAdmin())
+                <div class="ml-auto">
+                    <form action="{{ route('admin.logs.clear') }}" method="POST" onsubmit="return confirm('ATENÇÃO: Isso vai excluir TODAS as mensagens na fila de todos os clientes. Continuar?')">
+                        @csrf
+                        <button type="submit" class="bg-red-600/10 border border-red-500/20 text-red-500 px-4 py-2 rounded-xl text-[10px] font-bold hover:bg-red-600 hover:text-white transition group flex items-center space-x-2">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            <span>LIMPAR TODA A FILA</span>
+                        </button>
+                    </form>
+                </div>
+            @endif
         </div>
 
         <!-- Logs Table -->
@@ -30,6 +42,7 @@
                                 <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Usuário/Plano</th>
                                 <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Status</th>
                                 <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Data</th>
+                                <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right">Ações</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-white/5">
@@ -69,6 +82,14 @@
                                     </td>
                                     <td class="px-8 py-6 text-sm text-center font-bold text-gray-500 tabular-nums">
                                         {{ $log->created_at->format('d/m H:i') }}
+                                    </td>
+                                    <td class="px-8 py-6 text-right">
+                                        <form action="{{ route('admin.logs.destroy', $log) }}" method="POST" onsubmit="return confirm('Excluir este registro?')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="text-gray-600 hover:text-red-500 transition">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                             @endforeach

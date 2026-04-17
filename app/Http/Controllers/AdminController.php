@@ -324,4 +324,44 @@ class AdminController extends Controller
         $apiKey->delete();
         return back()->with('success', 'Chave deletada com sucesso!');
     }
+
+    public function destroyLog(MessageLog $log)
+    {
+        // Se já foi enviada, não faz sentido "cancelar", mas podemos deletar o log
+        // Para admins, permitimos qualquer deleção. Para usuários, só as deles.
+        if (!Auth::user()->isAdmin() && $log->apiKey->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $log->delete();
+        return back()->with('success', 'Mensagem removida dos relatórios.');
+    }
+
+    public function clearQueue(Request $request)
+    {
+        if (!Auth::user()->isAdmin()) {
+            abort(403);
+        }
+
+        // Limpa todas as mensagens com status 'queued' do banco
+        MessageLog::where('status', 'queued')->delete();
+
+        // Limpa o Redis para evitar envios duplicados/fantasmas
+        // Isso remove as filas de todos os clientes se não especificado
+        // Mas como precaução, pegamos as chaves do Redis
+        try {
+            $redis = \Illuminate\Support\Facades\Redis::connection();
+            $keys = $redis->keys('wpp_messages:*');
+            foreach ($keys as $key) {
+                // O prefixo pode variar dependendo da config do Laravel
+                // Removendo o prefixo se existir (ex: 'laravel_database_')
+                $cleanKey = str_replace(config('database.redis.options.prefix'), '', $key);
+                $redis->del($cleanKey);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Redis Clear Error: ' . $e->getMessage());
+        }
+
+        return back()->with('success', 'Fila de envios limpa com sucesso em todo o sistema!');
+    }
 }
