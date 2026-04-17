@@ -67,10 +67,12 @@ class RecoverMessages extends Command
                 $session = 'mensageria-tech';
                 
                 // Tenta encontrar a instância do usuário para saber qual fila usar
-                $instance = WhatsappInstance::where('user_id', $log->apiKey->user_id)->first();
-                
-                if ($instance) {
-                    $session = $instance->session_name;
+                // Adicionada verificação de segurança na relação apiKey
+                if ($log->apiKey && $log->apiKey->user_id) {
+                    $instance = WhatsappInstance::where('user_id', $log->apiKey->user_id)->first();
+                    if ($instance) {
+                        $session = $instance->session_name;
+                    }
                 }
 
                 $this->line("Re-enviando ID {$log->id} para a fila: {$session}");

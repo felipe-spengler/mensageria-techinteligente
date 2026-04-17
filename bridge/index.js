@@ -74,11 +74,11 @@ function startResponsivenessWatchdog() {
     // Verificador externo (não depende do loop travar para rodar o check)
     setInterval(() => {
         const diff = Date.now() - lastHeartbeat;
-        if (diff > 30000) { // 30 segundos sem atualizar o pulso
+        if (diff > 60000) { // 60 segundos sem atualizar o pulso (tolerante ao boot)
             console.error(`[CRITICAL WATCHDOG] Event Loop bloqueado por ${diff}ms. Matando processo para auto-restart do Docker.`);
             process.exit(1);
         }
-    }, 10000);
+    }, 15000);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
