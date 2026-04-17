@@ -263,9 +263,14 @@ async function startWorker(sessionName) {
                     const profile = await client.checkNumberStatus(to);
                     if (profile && profile.numberExists && profile.id && profile.id._serialized) {
                         to = profile.id._serialized;
+                    } else if (profile && !profile.numberExists) {
+                        throw new Error("O destinatário não possui WhatsApp cadastrado.");
                     }
                 } catch (checkErr) {
                     console.log(`[WORKER] [${sessionName}] checkNumberStatus falhou para ${to}: ${checkErr.message || checkErr}`);
+                    if (checkErr.message === "O destinatário não possui WhatsApp cadastrado.") {
+                        throw checkErr;
+                    }
                 }
 
                 const sendOp = message.media
@@ -280,7 +285,25 @@ async function startWorker(sessionName) {
                 await notifyLaravel(message.log_id, 'sent');
             } catch (error) {
                 console.error(`[WORKER] [${sessionName}] Error:`, error.message);
-                await notifyLaravel(message.log_id, 'failed', error.message);
+
+                const isDefinitiveError = error.message && (
+                    error.message.includes('destinatário não possui WhatsApp') ||
+                    error.message.includes('No LID for user') ||
+                    error.message.includes('not exists') ||
+                    error.message.includes('Rate limit') ||
+                    error.message.includes('invalid')
+                );
+
+                const maxRetries = 3;
+                message.retries = (message.retries || 0) + 1;
+
+                if (!isDefinitiveError && message.retries <= maxRetries) {
+                    console.log(`[WORKER] [${sessionName}] Erro de sistema. Recolocando no fim da fila (Tentativa ${message.retries} de ${maxRetries}): ${error.message}`);
+                    await redis.rpush(sessionKey, JSON.stringify(message));
+                } else {
+                    console.log(`[WORKER] [${sessionName}] Falha definitiva ou limite de tentativas retries atingido. Notificando Laravel: ${error.message}`);
+                    await notifyLaravel(message.log_id, 'failed', error.message);
+                }
             }
 
             // Cooldown per-session: 2 seconds

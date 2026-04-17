@@ -60,7 +60,7 @@ class WebhookController extends Controller
 
         try {
             $redis = \Illuminate\Support\Facades\Redis::connection();
-            $redis->rpush('wpp_messages', json_encode([
+            $redis->rpush('wpp_messages:mensageria-tech', json_encode([
                 'to' => $dest,
                 'message' => $message,
                 'session' => 'mensageria-tech', // Admin session
