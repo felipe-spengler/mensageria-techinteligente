@@ -3,6 +3,29 @@
 @section('title', 'Painel Geral')
 
 @section('content')
+    @if($pendingPayment)
+    <div class="mb-10 glass p-8 rounded-[40px] border border-amber-500/30 bg-amber-500/5 overflow-hidden relative group">
+        <div class="absolute -right-20 -top-20 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl"></div>
+        <div class="flex flex-col md:flex-row items-center justify-between relative z-10 gap-6">
+            <div class="flex items-center space-x-6">
+                <div class="w-16 h-16 bg-amber-500/20 border border-amber-500/30 text-amber-500 rounded-3xl flex items-center justify-center animate-pulse">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-white mb-1">Aguardando Pagamento</h3>
+                    <p class="text-gray-400 text-sm">Identificamos um pedido pendente ({{ $pendingPayment->txid }}). Conclua o pagamento via PIX para liberar seus recursos.</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                @if($pendingPayment->payload)
+                    <button onclick="navigator.clipboard.writeText('{{ $pendingPayment->payload }}'); alert('Código PIX Copiado!')" class="btn-grad px-8 py-4 rounded-3xl text-sm font-bold shadow-lg shadow-blue-900/40 whitespace-nowrap">Copiar Código PIX</button>
+                @endif
+                <a href="/" class="bg-dash-800 hover:bg-dash-700 px-8 py-4 rounded-3xl text-sm font-bold border border-white/5 transition whitespace-nowrap">Ver Planos</a>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         <!-- Stats Card -->
         <div class="glass p-8 rounded-[40px] border-dash-700 relative overflow-hidden group hover:scale-[1.02] transition-transform">

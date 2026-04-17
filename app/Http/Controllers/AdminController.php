@@ -38,7 +38,18 @@ class AdminController extends Controller
                 ->count(),
         ];
 
-        return view('admin.index', compact('stats'));
+        $pendingPayment = null;
+        if (!$user->isAdmin()) {
+            $hasActiveKey = ApiKey::where('user_id', $user->id)->where('status', 'active')->exists();
+            if (!$hasActiveKey) {
+                $pendingPayment = PixTransaction::where('user_id', $user->id)
+                    ->where('status', 'pending')
+                    ->latest()
+                    ->first();
+            }
+        }
+
+        return view('admin.index', compact('stats', 'pendingPayment'));
     }
 
     public function tester()
@@ -148,6 +159,9 @@ class AdminController extends Controller
      */
     public function financeiro()
     {
+        if (!Auth::user()->isAdmin()) {
+            abort(403);
+        }
         $transactions = PixTransaction::latest()->paginate(20);
         $totalTransactions = PixTransaction::count();
         $paidTransactions = PixTransaction::where('status', 'paid')->count();
@@ -163,6 +177,9 @@ class AdminController extends Controller
 
     public function saveFinanceiro(Request $request)
     {
+        if (!Auth::user()->isAdmin()) {
+            abort(403);
+        }
         $request->validate([
             'asaas_key' => 'nullable|string',
             'asaas_mode' => 'required|in:sandbox,production',
@@ -182,6 +199,9 @@ class AdminController extends Controller
 
     public function testAsaas()
     {
+        if (!Auth::user()->isAdmin()) {
+            abort(403);
+        }
         $key = Setting::getValue('asaas_api_key');
         $mode = Setting::getValue('asaas_mode', 'sandbox');
 
@@ -215,12 +235,18 @@ class AdminController extends Controller
      */
     public function plans()
     {
+        if (!Auth::user()->isAdmin()) {
+            abort(403);
+        }
         $plans = Plan::all();
         return view('admin.plans', compact('plans'));
     }
 
     public function storePlan(Request $request)
     {
+        if (!Auth::user()->isAdmin()) {
+            abort(403);
+        }
 
         $validated = $request->validate([
             'name' => 'required|string',
@@ -236,6 +262,9 @@ class AdminController extends Controller
 
     public function updatePlan(Request $request, Plan $plan)
     {
+        if (!Auth::user()->isAdmin()) {
+            abort(403);
+        }
 
         $validated = $request->validate([
             'name' => 'required|string',
@@ -251,6 +280,9 @@ class AdminController extends Controller
 
     public function destroyPlan(Plan $plan)
     {
+        if (!Auth::user()->isAdmin()) {
+            abort(403);
+        }
 
         $plan->delete();
         return back()->with('success', 'Plano deletado com sucesso!');

@@ -44,6 +44,10 @@ Route::middleware(['auth'])->group(function () {
     // Bridge Status
     Route::get('/admin/bridge/qrcode', [ManualSendController::class, 'getBridgeQrCode']);
     Route::get('/admin/bridge/status', [ManualSendController::class, 'getBridgeStatus']);
+
+    // Database Manager (Raw)
+    Route::get('/admin/db-manager/{table?}', [\App\Http\Controllers\DatabaseManagerController::class, 'index'])->name('admin.db_manager');
+    Route::delete('/admin/db-manager/{table}/{id}', [\App\Http\Controllers\DatabaseManagerController::class, 'delete'])->name('admin.db_manager.delete');
 });
 
 Route::get('/documentacao', function() {

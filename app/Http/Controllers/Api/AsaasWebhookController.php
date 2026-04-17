@@ -51,7 +51,7 @@ class AsaasWebhookController extends Controller
 
         // 2. Check if it's a Subscription/Upgrade (SaaS)
         if (isset($metadata['type']) && $metadata['type'] === 'subscription') {
-            $userId = $metadata['user_id'];
+            $userId = $transaction->user_id;
             $planId = $metadata['plan_id'];
             $plan = \App\Models\Plan::find($planId);
 

@@ -110,6 +110,7 @@ class PlanController extends Controller
                 'txid' => $txid,
                 'amount' => $plan->price,
                 'status' => 'pending',
+                'payload' => $pixPayload,
                 'metadata' => [
                     'plan_id' => $plan->id,
                     'type' => 'subscription'

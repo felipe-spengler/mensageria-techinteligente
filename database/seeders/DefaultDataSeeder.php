@@ -97,18 +97,21 @@ class DefaultDataSeeder extends Seeder
             }
         }
 
-        // Default Settings
+        // Default Settings - Try to load from ENV if available (e.g. for first deploy)
         $settings = [
-            ['key' => 'asaas_api_key', 'value' => '', 'group' => 'asaas'],
-            ['key' => 'asaas_mode', 'value' => 'sandbox', 'group' => 'asaas'],
-            ['key' => 'asaas_enabled', 'value' => 'false', 'group' => 'asaas'],
-            ['key' => 'asaas_webhook_token', 'value' => 'wh_' . bin2hex(random_bytes(16)), 'group' => 'asaas'],
-            ['key' => 'wpp_bridge_key', 'value' => '7caeb868-3d08-4761-b126-4f601cd05f7a', 'group' => 'bridge'],
-            ['key' => 'webhook_token', 'value' => bin2hex(random_bytes(16)), 'group' => 'security'],
+            ['key' => 'asaas_api_key', 'value' => env('ASAAS_API_KEY'), 'group' => 'asaas'],
+            ['key' => 'asaas_mode', 'value' => env('ASAAS_MODE', 'sandbox'), 'group' => 'asaas'],
+            ['key' => 'asaas_enabled', 'value' => env('ASAAS_ENABLED', 'true'), 'group' => 'asaas'],
+            ['key' => 'asaas_webhook_token', 'value' => env('ASAAS_WEBHOOK_TOKEN', 'wh_' . bin2hex(random_bytes(16))), 'group' => 'asaas'],
+            ['key' => 'wpp_bridge_key', 'value' => env('WPP_BRIDGE_INTERNAL_KEY', '7caeb868-3d08-4761-b126-4f601cd05f7a'), 'group' => 'bridge'],
+            ['key' => 'webhook_token', 'value' => env('WEBHOOK_TOKEN', bin2hex(random_bytes(16))), 'group' => 'security'],
         ];
 
         foreach ($settings as $setting) {
-            Setting::updateOrCreate(['key' => $setting['key']], $setting);
+            // Only update/create if we actually have a value to set, OR if it doesn't exist yet
+            if (!empty($setting['value']) || !Setting::where('key', $setting['key'])->exists()) {
+                Setting::updateOrCreate(['key' => $setting['key']], $setting);
+            }
         }
     }
 }

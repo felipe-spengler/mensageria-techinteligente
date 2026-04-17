@@ -68,10 +68,12 @@
                         <span class="text-sm font-medium">Dashboard</span>
                     </a>
 
+                    @if(auth()->user()->isAdmin())
                     <a href="/admin/plans" class="flex items-center space-x-3 p-3 rounded-xl {{ request()->is('admin/plans*') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'hover:bg-dash-800 text-gray-400' }}">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                         <span class="text-sm font-medium">Planos de Venda</span>
                     </a>
+                    @endif
 
                     <a href="/admin/api-keys" class="flex items-center space-x-3 p-3 rounded-xl {{ request()->is('admin/api-keys*') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'hover:bg-dash-800 text-gray-400' }}">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
@@ -83,10 +85,17 @@
                         <span class="text-sm font-medium">Relatórios</span>
                     </a>
 
+                    @if(auth()->user()->isAdmin())
                     <a href="/admin/financeiro" class="flex items-center space-x-3 p-3 rounded-xl {{ request()->is('admin/financeiro*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'hover:bg-dash-800 text-gray-400' }}">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
                         <span class="text-sm font-medium">Financeiro & Asaas</span>
                     </a>
+                    
+                    <a href="{{ route('admin.db_manager') }}" class="flex items-center space-x-3 p-3 rounded-xl {{ request()->is('admin/db-manager*') ? 'bg-red-600 text-white shadow-lg shadow-red-900/20' : 'hover:bg-dash-800 text-gray-400' }}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                        <span class="text-sm font-medium">Gerenciar Banco</span>
+                    </a>
+                    @endif
 
                     <div class="pt-6 pb-2 text-[10px] font-bold text-gray-600 uppercase tracking-widest px-3">WhatsApp</div>
 
