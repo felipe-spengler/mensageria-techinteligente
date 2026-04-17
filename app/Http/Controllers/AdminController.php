@@ -113,7 +113,7 @@ class AdminController extends Controller
         // Call bridge to start
         $bridgeUrl = env('WPP_BRIDGE_URL', 'http://bridge:3000');
         try {
-            \Illuminate\Support\Facades\Http::post("{$bridgeUrl}/start/{$instance->session_name}");
+            \Illuminate\Support\Facades\Http::timeout(5)->post("{$bridgeUrl}/start/{$instance->session_name}");
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Error starting bridge session: ' . $e->getMessage());
         }

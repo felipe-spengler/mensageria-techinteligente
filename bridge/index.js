@@ -191,11 +191,16 @@ async function loadExistingSessions() {
         // Ignora a sessão master pois ela será iniciada manualmente ao final
         if (session === 'mensageria-tech') continue;
         
-        // Carrega a sessão imediatamente no loop
-        initWhatsApp(session).catch(e => console.error(`[BOOT] Failed to load ${session}:`, e.message));
+        // Carrega a sessão e AGUARDA ela iniciar completamente (ou tenta)
+        // para não sobrecarregar a CPU e memória explodindo o Event Loop
+        try {
+            await initWhatsApp(session);
+        } catch (e) {
+            console.error(`[BOOT] Failed to load ${session}:`, e.message);
+        }
         
-        // Pequeno delay (agora 2s) após o início para não sobrecarregar CPU
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Delay extra de segurança
+        await new Promise(resolve => setTimeout(resolve, 5000));
     }
 }
 
