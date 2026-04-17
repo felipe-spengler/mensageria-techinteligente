@@ -22,3 +22,8 @@ vendor/
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Recibos e Segurança
+recibo_techinteligente.html
+vps_key.pem
+*.png
