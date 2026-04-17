@@ -61,6 +61,26 @@ function startMemoryWatchdog() {
     }, WATCHDOG_INTERVAL_MS);
 }
 
+// Watchdog de responsividade (Event Loop)
+// Se o motor ficar travado (zumbi), ele se reinicia.
+function startResponsivenessWatchdog() {
+    let lastHeartbeat = Date.now();
+    
+    // Heartbeat interno
+    setInterval(() => {
+        lastHeartbeat = Date.now();
+    }, 1000);
+
+    // Verificador externo (não depende do loop travar para rodar o check)
+    setInterval(() => {
+        const diff = Date.now() - lastHeartbeat;
+        if (diff > 30000) { // 30 segundos sem atualizar o pulso
+            console.error(`[CRITICAL WATCHDOG] Event Loop bloqueado por ${diff}ms. Matando processo para auto-restart do Docker.`);
+            process.exit(1);
+        }
+    }, 10000);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // APP SETUP
 // ─────────────────────────────────────────────────────────────────────────────
@@ -458,6 +478,7 @@ process.on('unhandledRejection', (reason) => {
 app.listen(port, '0.0.0.0', () => {
     console.log(`Bridge HTTP server running on port ${port}`);
     startMemoryWatchdog();
+    startResponsivenessWatchdog(); // Monitora se o motor ficou zumbi
     startSessionWatchdog(); // Extra slack: monitor all sessions
     loadExistingSessions(); // Auto-load all previous sessions
 });
