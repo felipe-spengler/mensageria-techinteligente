@@ -14,7 +14,7 @@ Route::get('/', [\App\Http\Controllers\PlanController::class, 'index']);
 // Route::get('/envia_api', [ManualSendController::class, 'showEnviaApi']);
 // Route::post('/envia_api/send', [ManualSendController::class, 'postEnviaApi']);
 // Route::post('/manual-send', [ManualSendController::class, 'store']);
-// Route::get('/pix/status/{txid}', [ManualSendController::class, 'checkStatus']);
+Route::get('/pix/status/{txid}', [ManualSendController::class, 'checkStatus']);
 Route::middleware(['auth'])->group(function () {
     // New Manual Admin Dashboard
     Route::get('/admin', [\App\Http\Controllers\AdminController::class, 'index'])->name('admin.dashboard');
