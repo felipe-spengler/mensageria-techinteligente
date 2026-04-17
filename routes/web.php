@@ -16,17 +16,25 @@ Route::get('/', [\App\Http\Controllers\PlanController::class, 'index']);
 // Route::post('/manual-send', [ManualSendController::class, 'store']);
 Route::get('/pix/status/{txid}', [ManualSendController::class, 'checkStatus']);
 Route::middleware(['auth'])->group(function () {
-    // New Manual Admin Dashboard
+    // Dashboard (Visível mesmo sem plano para mostrar o PIX)
     Route::get('/admin', [\App\Http\Controllers\AdminController::class, 'index'])->name('admin.dashboard');
-    Route::get('/admin/api-keys', [\App\Http\Controllers\AdminController::class, 'apiKeys'])->name('admin.api_keys');
-    Route::get('/admin/logs', [\App\Http\Controllers\AdminController::class, 'logs'])->name('admin.logs');
-    Route::get('/admin/whatsapp', [\App\Http\Controllers\AdminController::class, 'whatsapp'])->name('admin.whatsapp');
-    Route::get('/admin/tester', [\App\Http\Controllers\AdminController::class, 'tester'])->name('admin.tester');
-    Route::post('/admin/whatsapp/start', [\App\Http\Controllers\AdminController::class, 'startWhatsapp'])->name('admin.whatsapp.start');
-    Route::post('/admin/whatsapp/schedule', [\App\Http\Controllers\AdminController::class, 'updateSchedule'])->name('admin.whatsapp.schedule');
-    Route::post('/admin/save-asaas', [\App\Http\Controllers\AdminController::class, 'saveAsaas'])->name('admin.asaas.save');
 
-    // Financeiro
+    // Rotas Protegidas (Exigem Plano Ativo)
+    Route::middleware(['active_plan'])->group(function () {
+        Route::get('/admin/api-keys', [\App\Http\Controllers\AdminController::class, 'apiKeys'])->name('admin.api_keys');
+        Route::get('/admin/logs', [\App\Http\Controllers\AdminController::class, 'logs'])->name('admin.logs');
+        Route::get('/admin/whatsapp', [\App\Http\Controllers\AdminController::class, 'whatsapp'])->name('admin.whatsapp');
+        Route::get('/admin/tester', [\App\Http\Controllers\AdminController::class, 'tester'])->name('admin.tester');
+        Route::post('/admin/whatsapp/start', [\App\Http\Controllers\AdminController::class, 'startWhatsapp'])->name('admin.whatsapp.start');
+        Route::post('/admin/whatsapp/schedule', [\App\Http\Controllers\AdminController::class, 'updateSchedule'])->name('admin.whatsapp.schedule');
+        
+        // API Keys logic
+        Route::post('/admin/api-keys', [\App\Http\Controllers\AdminController::class, 'storeApiKey'])->name('admin.api_keys.store');
+        Route::delete('/admin/api-keys/{apiKey}', [\App\Http\Controllers\AdminController::class, 'destroyApiKey'])->name('admin.api_keys.destroy');
+    });
+
+    // Rotas Administrativas (Apenas Admin)
+    Route::post('/admin/save-asaas', [\App\Http\Controllers\AdminController::class, 'saveAsaas'])->name('admin.asaas.save');
     Route::get('/admin/financeiro', [\App\Http\Controllers\AdminController::class, 'financeiro'])->name('admin.financeiro');
     Route::post('/admin/financeiro', [\App\Http\Controllers\AdminController::class, 'saveFinanceiro'])->name('admin.financeiro.save');
     Route::post('/admin/financeiro/test', [\App\Http\Controllers\AdminController::class, 'testAsaas'])->name('admin.financeiro.test');
@@ -36,10 +44,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/plans', [\App\Http\Controllers\AdminController::class, 'storePlan'])->name('admin.plans.store');
     Route::put('/admin/plans/{plan}', [\App\Http\Controllers\AdminController::class, 'updatePlan'])->name('admin.plans.update');
     Route::delete('/admin/plans/{plan}', [\App\Http\Controllers\AdminController::class, 'destroyPlan'])->name('admin.plans.destroy');
-    
-    // API Keys logic
-    Route::post('/admin/api-keys', [\App\Http\Controllers\AdminController::class, 'storeApiKey'])->name('admin.api_keys.store');
-    Route::delete('/admin/api-keys/{apiKey}', [\App\Http\Controllers\AdminController::class, 'destroyApiKey'])->name('admin.api_keys.destroy');
 
     // Bridge Status
     Route::get('/admin/bridge/qrcode', [ManualSendController::class, 'getBridgeQrCode']);

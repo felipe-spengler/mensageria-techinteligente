@@ -12,7 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            'active_plan' => \App\Http\Middleware\CheckActivePlan::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
