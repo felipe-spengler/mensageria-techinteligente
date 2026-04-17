@@ -39,7 +39,20 @@ class RecoverMessages extends Command
 
     private function processRecovery()
     {
-        $stuckMessages = MessageLog::where('status', 'queued')
+        // Pega mensagens em 'queued' (paradas) OU 'failed' por erro de sistema/timeout
+        $stuckMessages = MessageLog::where(function($query) {
+                $query->where('status', 'queued')
+                      ->orWhere(function($q) {
+                          $q->where('status', 'failed')
+                            ->where(function($sq) {
+                                // Tentamos re-processar erros que parecem ser do servidor/instabilidades
+                                $sq->where('reason', 'like', '%timeout%')
+                                  ->orWhere('reason', 'like', '%Connection%')
+                                  ->orWhere('reason', 'like', '%refused%');
+                            })
+                            ->where('updated_at', '>', now()->subHours(1)); // Somente falhas recentes
+                      });
+            })
             ->where('created_at', '<', now()->subMinutes(10))
             ->get();
 
@@ -69,6 +82,11 @@ class RecoverMessages extends Command
                     'media' => $log->media_url,
                     'session' => $session
                 ]));
+
+                // Se era uma falha anterior, volta o status para queued no banco
+                if ($log->status === 'failed') {
+                    $log->update(['status' => 'queued', 'reason' => 'Retrying after system failure alert']);
+                }
 
                 // Logamos no Laravel também para fins de auditoria
                 Log::notice("Mensagem de recuperação enviada para Redis", [
