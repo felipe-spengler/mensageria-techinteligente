@@ -133,7 +133,7 @@ async function initWhatsApp(sessionName) {
             useChrome: false,
             executablePath: '/usr/bin/chromium',
             protocolTimeout: 0, // Disable timeout for initialization
-            sessionTokenPath: './tokens',
+            sessionTokenPath: path.join(__dirname, 'tokens'),
             puppeteerOptions: {
                 userDataDir: sessionPath,
                 args: [
@@ -191,9 +191,11 @@ async function loadExistingSessions() {
         // Ignora a sessão master pois ela será iniciada manualmente ao final
         if (session === 'mensageria-tech') continue;
         
-        // Pequeno delay entre inícios para não sobrecarregar CPU no boot
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        // Carrega a sessão imediatamente no loop
         initWhatsApp(session).catch(e => console.error(`[BOOT] Failed to load ${session}:`, e.message));
+        
+        // Pequeno delay (agora 2s) após o início para não sobrecarregar CPU
+        await new Promise(resolve => setTimeout(resolve, 2000));
     }
 }
 
@@ -238,6 +240,7 @@ async function startWorker(sessionName) {
                 break;
             }
 
+            console.log(`[WORKER] Checking queue for: ${sessionName} (${sessionKey})`);
             const data = await redis.blpop(sessionKey, 10); // 10s wait
             if (!data) continue;
 
@@ -254,6 +257,16 @@ async function startWorker(sessionName) {
             try {
                 let to = rawTo;
                 if (!to.includes('@')) to = to + '@c.us';
+
+                // Trata o erro 'No LID for user' tentando validar o número antes do envio
+                try {
+                    const profile = await client.checkNumberStatus(to);
+                    if (profile && profile.numberExists && profile.id && profile.id._serialized) {
+                        to = profile.id._serialized;
+                    }
+                } catch (checkErr) {
+                    console.log(`[WORKER] [${sessionName}] checkNumberStatus falhou para ${to}: ${checkErr.message || checkErr}`);
+                }
 
                 const sendOp = message.media
                     ? client.sendFile(to, message.media, 'file', message.message)
