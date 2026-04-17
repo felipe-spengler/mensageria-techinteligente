@@ -114,7 +114,7 @@ services:
       REDIS_URL: redis://redis:6379
       WEBHOOK_URL: http://app/api/v1/webhook
       INTERNAL_KEY: 7caeb868-3d08-4761-b126-4f601cd05f7a
-      HEAP_LIMIT_MB: '768'
+      HEAP_LIMIT_MB: '3072'
       QUEUE_MAX_SIZE: '10000'
       RATE_LIMIT_MAX: '20'
       AXIOS_TIMEOUT_MS: '30000'
@@ -129,8 +129,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1024M
+          cpus: '2.0'
+          memory: 4096M
         reservations:
           memory: 256M
 

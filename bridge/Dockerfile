@@ -21,8 +21,8 @@ COPY . ./
 
 EXPOSE 3000
 
-# Limit Node.js heap to 1.2 GB to prevent OOM on the VPS
-CMD ["node", "--max-old-space-size=1200", "index.js"]
+# Limit Node.js heap to 3 GB to prevent OOM
+CMD ["node", "--max-old-space-size=3072", "index.js"]
 
 # Docker health check – asks /health every 30s; 3 failures = unhealthy
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
