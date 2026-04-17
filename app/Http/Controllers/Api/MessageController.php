@@ -146,7 +146,17 @@ class MessageController extends Controller
             
             $session = 'mensageria-tech';
             $instance = \App\Models\WhatsappInstance::where('user_id', $log->apiKey->user_id)->first();
-            if ($instance) $session = $instance->session_name;
+            
+            if ($instance) {
+                $session = $instance->session_name;
+
+                // --- AUTO-START LOGIC ---
+                // Se a instância não está ativa (connected), avisamos o bridge para tentar ligar
+                // Isso garante que se o servidor reiniciar, o primeiro envio de API "acorde" a instância.
+                if ($instance->status !== 'connected' && $instance->status !== 'qr_ready') {
+                    $this->triggerBridgeStart($session);
+                }
+            }
 
             $redis->rpush('wpp_messages:' . $session, json_encode([
                 'log_id' => $log->id,
@@ -157,6 +167,17 @@ class MessageController extends Controller
             ]));
         } catch (\Exception $e) {
             Log::error('Redis Error: ' . $e->getMessage());
+        }
+    }
+
+    private function triggerBridgeStart($session)
+    {
+        try {
+            // Chamada "fire and forget" ou com timeout curto para não travar a resposta da API
+            $bridgeUrl = env('WPP_BRIDGE_URL', 'http://bridge:3000');
+            \Illuminate\Support\Facades\Http::timeout(5)->post($bridgeUrl . '/start/' . $session);
+        } catch (\Exception $e) {
+             Log::warning("Auto-start bridge failure for session {$session}: " . $e->getMessage());
         }
     }
 }
