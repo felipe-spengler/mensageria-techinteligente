@@ -39,6 +39,9 @@ class AdminController extends Controller
         ];
 
         $pendingPayment = null;
+        $plans = [];
+        $hasActiveKey = false;
+
         if (!$user->isAdmin()) {
             $hasActiveKey = ApiKey::where('user_id', $user->id)->where('status', 'active')->exists();
             if (!$hasActiveKey) {
@@ -46,10 +49,14 @@ class AdminController extends Controller
                     ->where('status', 'pending')
                     ->latest()
                     ->first();
+                
+                if (!$pendingPayment) {
+                    $plans = Plan::all();
+                }
             }
         }
 
-        return view('admin.index', compact('stats', 'pendingPayment'));
+        return view('admin.index', compact('stats', 'pendingPayment', 'plans', 'hasActiveKey'));
     }
 
     public function tester()

@@ -90,6 +90,41 @@
             </div>
         </div>
     </div>
+    
+    @if(!$hasActiveKey && !$pendingPayment && !auth()->user()->isAdmin())
+    <div class="mt-12 space-y-8">
+        <div class="text-center">
+            <h3 class="text-2xl font-bold text-white mb-2">🚀 Comece Agora</h3>
+            <p class="text-gray-400 text-sm">Escolha um dos planos abaixo para liberar o envio de mensagens via API.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            @foreach($plans as $plan)
+            <div class="glass p-8 rounded-[40px] border border-white/5 hover:border-blue-500/30 transition-all flex flex-col justify-between group">
+                <div>
+                    <div class="flex items-center justify-between mb-6">
+                        <span class="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-widest">{{ $plan->type === 'media' ? 'Texto + Mídia' : 'Apenas Texto' }}</span>
+                        <div class="text-2xl font-black text-white">R$ {{ number_format($plan->price, 0) }}</div>
+                    </div>
+                    <h4 class="text-xl font-bold text-white mb-2">{{ $plan->name }}</h4>
+                    <p class="text-xs text-gray-500 mb-6 leading-relaxed">{{ $plan->description }}</p>
+                    <ul class="space-y-3 mb-8">
+                        <li class="flex items-center space-x-3 text-[11px] text-gray-400">
+                            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            <span>{{ number_format($plan->message_limit, 0) }} mensagens/mês</span>
+                        </li>
+                        <li class="flex items-center space-x-3 text-[11px] text-gray-400">
+                            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            <span>API REST & Webhooks</span>
+                        </li>
+                    </ul>
+                </div>
+                <a href="/purchase/{{ $plan->id }}" class="btn-grad w-full py-4 rounded-3xl text-center text-sm font-bold shadow-lg shadow-blue-900/40">Assinar Agora</a>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
 
     <!-- Banner Info -->
     <div class="mt-12 group overflow-hidden relative">

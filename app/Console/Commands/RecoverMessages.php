@@ -29,6 +29,16 @@ class RecoverMessages extends Command
      */
     public function handle()
     {
+        $this->processRecovery();
+        
+        // Uma vez por dia (ou quando rodar entre 09:00 e 09:59), verifica vencimentos
+        if (now()->hour == 9) {
+            $this->processExpiryWarnings();
+        }
+    }
+
+    private function processRecovery()
+    {
         $stuckMessages = MessageLog::where('status', 'queued')
             ->where('created_at', '<', now()->subMinutes(10))
             ->get();
@@ -74,5 +84,48 @@ class RecoverMessages extends Command
         }
 
         $this->info("Recuperação concluída.");
+    }
+
+    private function processExpiryWarnings()
+    {
+        $this->info("Verificando planos que vencem em 10 dias...");
+        
+        // Busca chaves que vencem em exatamente 10 dias
+        $expiringKeys = \App\Models\ApiKey::where('status', 'active')
+            ->whereDate('expires_at', now()->addDays(10)->toDateString())
+            ->with('user')
+            ->get();
+
+        foreach ($expiringKeys as $key) {
+            if (!$key->user || !$key->user->phone) continue;
+
+            $message = "📢 *Aviso TechInteligente*\n\nOlá, *{$key->user->name}*!\n\nPassando para avisar que sua assinatura do plano *{$key->plan->name}* vence em *10 dias*.\n\nEvite interrupções no seu serviço garantindo a renovação diretamente no painel.\n\n_Acesse aqui: " . config('app.url') . "/admin_";
+
+            $this->pushRawToAdminQueue($key->user->phone, $message);
+            $this->line("Aviso de 10 dias enviado para {$key->user->name}");
+        }
+    }
+
+    private function pushRawToAdminQueue($to, $message)
+    {
+        try {
+            $redisTo = $to;
+            // Limpa caracteres não numéricos
+            $redisTo = preg_replace('/[^0-9]/', '', $redisTo);
+            
+            // Garante DDI 55
+            if (strlen($redisTo) <= 11) {
+                $redisTo = '55' . $redisTo;
+            }
+
+            Redis::rpush('wpp_messages:mensageria-tech', json_encode([
+                'to' => $redisTo,
+                'message' => $message,
+                'is_system_notification' => true,
+                'session' => 'mensageria-tech'
+            ]));
+        } catch (\Exception $e) {
+            Log::error('Expiry Notification Redis Error: ' . $e->getMessage());
+        }
     }
 }
