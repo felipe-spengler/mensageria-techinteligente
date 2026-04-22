@@ -16,12 +16,18 @@ class ValidateApiKey
     public function handle(Request $request, Closure $next): Response
     {
         $header = $request->header('Authorization');
+        $key = null;
         
-        if (!$header || !str_starts_with($header, 'Bearer ')) {
-            return response()->json(['error' => 'Unauthorized. Bearer token required.'], 401);
+        if ($header && str_starts_with($header, 'Bearer ')) {
+            $key = str_replace('Bearer ', '', $header);
+        } elseif ($request->has('api_key')) {
+            $key = $request->query('api_key');
         }
 
-        $key = str_replace('Bearer ', '', $header);
+        if (!$key) {
+            return response()->json(['error' => 'Unauthorized. API Key required (Bearer token or api_key parameter).'], 401);
+        }
+
         $apiKey = \App\Models\ApiKey::where('key', $key)->first();
 
         if (!$apiKey) {

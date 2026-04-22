@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Validator;
 
 class MessageController extends Controller
 {
-    use FormatsPhoneNumber;
+    use FormatsPhoneNumber, \App\Traits\InteractsWithBridge;
     public function send(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -89,6 +89,42 @@ class MessageController extends Controller
             'log_id' => $log->id,
             'remaining' => $apiKey->plan ? (max(0, $apiKey->plan->message_limit - ($messageCount + 1))) : 'unlimited'
         ]);
+    }
+
+    public function qrcode(Request $request)
+    {
+        $apiKey = $request->attributes->get('api_key');
+        $instance = \App\Models\WhatsappInstance::where('user_id', $apiKey->user_id)->first();
+        
+        if (!$instance) return response()->json(['error' => 'No instance found for this user'], 404);
+
+        try {
+            [$response, $url] = $this->requestBridge('qrcode/' . $instance->session_name);
+            
+            if ($response->status() === 404) {
+                return response()->json([
+                    'error' => 'QR Code not ready. Ensure instance is starting.',
+                    'session_status' => $response->json()['sessionStatus'] ?? 'unknown'
+                ], 404);
+            }
+
+            return response($response->body(), 200)
+                ->header('Content-Type', 'image/png');
+        } catch (\Exception $e) {
+            Log::error('API QR Code Error: ' . $e->getMessage());
+            return response()->json(['error' => 'Bridge offline or unreachable'], 503);
+        }
+    }
+
+    public function logs(Request $request)
+    {
+        $apiKey = $request->attributes->get('api_key');
+        
+        $logs = MessageLog::where('api_key_id', $apiKey->id)
+            ->latest()
+            ->paginate($request->get('per_page', 50));
+
+        return response()->json($logs);
     }
 
     private function notifyUpgradeForMedia($apiKey)
