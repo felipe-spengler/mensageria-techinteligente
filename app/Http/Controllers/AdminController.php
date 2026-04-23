@@ -125,6 +125,7 @@ class AdminController extends Controller
 
         // Determinar o motivo de mensagens na fila
         $queuedReason = null;
+        $nextSendIn = null;
         $queuedCount = MessageLog::when(!$user->isAdmin(), fn($q) => $q->whereHas('apiKey', fn($aq) => $aq->where('user_id', $user->id)))
             ->where('status', 'queued')->count();
 
@@ -132,22 +133,31 @@ class AdminController extends Controller
             $instance = \App\Models\WhatsappInstance::where('user_id', $user->id)->first();
             if ($instance) {
                 $status = strtoupper($instance->status ?? 'OFFLINE');
-                if (!in_array($status, ['CONNECTED', 'ISLOGGED', 'AUTHENTICATED', 'LOGGED', 'SYNCING'])) {
+                $successStates = ['CONNECTED', 'ISLOGGED', 'AUTHENTICATED', 'LOGGED', 'SYNCING'];
+                
+                if (!in_array($status, $successStates)) {
                     $queuedReason = 'Aguardando conexão com WhatsApp';
-                } elseif ($instance->schedule_type === 'business_hours') {
-                    $now = now()->timezone('America/Sao_Paulo');
-                    if ($now->isWeekend() || $now->hour < 8 || $now->hour >= 18) {
-                        $queuedReason = 'Aguardando horário comercial (Seg-Sex, 08h-18h)';
-                    } else {
+                } else {
+                    // Tenta buscar no Redis se há uma estimativa de próximo envio
+                    try {
+                        $redis = \Illuminate\Support\Facades\Redis::connection();
+                        $nextSendTimestamp = $redis->get("wpp_worker:next_send:{$instance->session_name}");
+                        if ($nextSendTimestamp) {
+                            $nextSendIn = max(0, (int)$nextSendTimestamp - time());
+                            $queuedReason = "Processando fila. Próximo envio em {$nextSendIn}s";
+                        } else {
+                            $queuedReason = 'Aguardando processamento do Worker...';
+                        }
+                    } catch (\Exception $e) {
                         $queuedReason = 'Processando fila (intervalo de 30s/msg)';
                     }
-                } else {
-                    $queuedReason = 'Processando fila (intervalo de 30s/msg)';
                 }
+            } else {
+                $queuedReason = 'Sem instância de WhatsApp configurada';
             }
         }
 
-        return view('admin.logs', compact('logs', 'queuedReason'));
+        return view('admin.logs', compact('logs', 'queuedReason', 'queuedCount', 'nextSendIn'));
     }
 
     /**

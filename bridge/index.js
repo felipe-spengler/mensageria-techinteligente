@@ -373,6 +373,10 @@ async function startWorker(sessionName) {
             }
 
             // Cooldown per-session: 30 seconds (safety first)
+            const nextSend = Math.floor(Date.now() / 1000) + 30;
+            await redis.set(`wpp_worker:next_send:${sessionName}`, nextSend, 'EX', 60);
+            
+            console.log(`[WORKER] [${sessionName}] Waiting 30s before next message... (Next at: ${nextSend})`);
             await new Promise(resolve => setTimeout(resolve, 30000));
 
         } catch (e) {
