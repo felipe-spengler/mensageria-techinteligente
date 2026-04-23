@@ -68,6 +68,7 @@
                         <span class="text-sm font-medium">Dashboard</span>
                     </a>
 
+                    @auth
                     @if(auth()->user()->isAdmin())
                     <a href="/admin/plans" class="flex items-center space-x-3 p-3 rounded-xl {{ request()->is('admin/plans*') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'hover:bg-dash-800 text-gray-400' }}">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
@@ -103,6 +104,7 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                         <span class="text-sm font-medium">Conectar WhatsApp</span>
                     </a>
+                    @endauth
 
                     <a href="{{ route('docs') }}" class="flex items-center space-x-3 p-3 rounded-xl {{ request()->is('documentacao*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/20' : 'hover:bg-dash-800 text-gray-400' }}">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -116,6 +118,7 @@
                 </nav>
 
                 <div class="absolute bottom-10 left-8 right-8">
+                    @auth
                     <div class="glass p-4 rounded-3xl mb-4 border-dash-700">
                         <div class="flex items-center space-x-3 mb-2">
                             <div class="w-8 h-8 rounded-full bg-dash-700 flex items-center justify-center text-xs font-bold text-blue-400">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
@@ -132,6 +135,11 @@
                             <span>Desconectar</span>
                         </button>
                     </form>
+                    @else
+                    <a href="/admin/login" class="w-full flex items-center justify-center space-x-2 p-3 text-xs font-bold text-blue-400 hover:text-blue-300 transition hover:bg-blue-500/10 rounded-xl border border-blue-500/20">
+                        <span>Fazer Login</span>
+                    </a>
+                    @endauth
                 </div>
             </div>
         </aside>
@@ -147,9 +155,11 @@
                 </div>
                 
                 <div class="flex items-center space-x-6">
+                    @auth
                     @if(auth()->user()->isAdmin())
                         <div class="bg-blue-500/10 text-blue-400 text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500/20 uppercase">Admin Master</div>
                     @endif
+                    @endauth
                 </div>
             </header>
 
