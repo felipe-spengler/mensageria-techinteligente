@@ -10,8 +10,8 @@ config({ path: path.join(__dirname, '.env') });
 const conn = new Client();
 conn.on('ready', () => {
   console.log('SSH Connection Ready');
-  // Command to check for stuck docker builds or high load
-  conn.exec('top -b -n 1 | head -n 30; echo "---"; ps aux | grep -E "cc1|make|docker-php-ext-install"', (err, stream) => {
+  const dir = process.env.VPS_COMPOSE_DIR;
+  conn.exec(`ls -la ${dir}; echo "---"; cat ${dir}/docker-compose.yaml`, (err, stream) => {
     if (err) throw err;
     stream.on('data', (data) => process.stdout.write(data))
           .stderr.on('data', (data) => process.stderr.write(data))
