@@ -1,3 +1,4 @@
+# Force Clean Build - v2
 FROM php:8.4-apache
 
 # Metadata
