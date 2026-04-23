@@ -9,9 +9,19 @@ config({ path: path.join(__dirname, '.env') });
 
 const conn = new Client();
 conn.on('ready', () => {
-  console.log('SSH Connection Ready. Checking if client_3 profile was recreated...');
+  console.log('SSH Connection Ready. Nuking client_3 session for a fresh start...');
+  
+  // 1. Force the bridge to "forget" the session if it's running (by calling /start again or just killing container if needed)
+  // 2. Delete the token folder on the VPS
+  // 3. The bridge will auto-restart it or wait for a new /start
   const cmd = `
-    ls -la /data/coolify/applications/wsgc44okcckccwws4ss4kcww/bridge/tokens/
+    # Delete the profile folder to ensure a clean start
+    sudo rm -rf /data/coolify/applications/wsgc44okcckccwws4ss4kcww/bridge/tokens/client_3
+    echo "Profile folder for client_3 deleted."
+    
+    # Restart the bridge container to clear in-memory state
+    docker restart $(docker ps -q --filter name=bridge-wsgc44)
+    echo "Bridge container restarted."
   `;
   
   conn.exec(cmd, (err, stream) => {

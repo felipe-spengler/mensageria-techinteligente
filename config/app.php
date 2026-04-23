@@ -11,7 +11,7 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'America/Sao_Paulo'),
 
     'locale' => env('APP_LOCALE', 'en'),
 

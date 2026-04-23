@@ -56,7 +56,9 @@
             <div class="relative">
                 <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Na Fila</p>
                 <h3 class="text-4xl font-bold text-white mb-2 tabular-nums">{{ $stats['total_queued'] }}</h3>
-                <p class="text-[10px] text-gray-400 font-semibold tracking-wide">Aguardando processamento</p>
+                <p class="text-[10px] {{ $queuedReason ? 'text-amber-400' : 'text-gray-400' }} font-semibold tracking-wide">
+                    {{ $queuedReason ?? 'Aguardando processamento' }}
+                </p>
             </div>
         </div>
 

@@ -29,6 +29,18 @@
                 </div>
             @endif
         </div>
+32: 
+33:         @if($queuedReason)
+34:         <div class="bg-amber-500/10 border border-amber-500/20 p-6 rounded-[32px] flex items-center space-x-4">
+35:             <div class="w-10 h-10 bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-500">
+36:                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+37:             </div>
+38:             <div>
+39:                 <p class="text-sm font-bold text-white">Mensagens na Fila</p>
+40:                 <p class="text-xs text-amber-400/80">{{ $queuedReason }}</p>
+41:             </div>
+42:         </div>
+43:         @endif
 
         <!-- Logs Table -->
         <div class="glass rounded-[40px] border-dash-700 overflow-hidden shadow-2xl">

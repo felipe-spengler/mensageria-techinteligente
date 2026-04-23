@@ -9,9 +9,9 @@ config({ path: path.join(__dirname, '.env') });
 
 const conn = new Client();
 conn.on('ready', () => {
-  console.log('SSH Connection Ready. Checking if client_3 profile was recreated...');
+  console.log('SSH Connection Ready. Checking Redis queues...');
   const cmd = `
-    ls -la /data/coolify/applications/wsgc44okcckccwws4ss4kcww/bridge/tokens/
+    docker exec $(docker ps -q --filter name=redis-wsgc44) redis-cli KEYS "wpp_messages:*" | xargs -I {} sh -c 'echo "{}: $(docker exec $(docker ps -q --filter name=redis-wsgc44) redis-cli LLEN {})"'
   `;
   
   conn.exec(cmd, (err, stream) => {

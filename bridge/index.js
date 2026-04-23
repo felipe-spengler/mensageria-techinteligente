@@ -13,6 +13,24 @@ const AXIOS_TIMEOUT_MS     = parseInt(process.env.AXIOS_TIMEOUT_MS     || '30000
 const QUEUE_MAX_SIZE       = parseInt(process.env.QUEUE_MAX_SIZE       || '10000'); // increased queue depth
 const RATE_LIMIT_MAX       = parseInt(process.env.RATE_LIMIT_MAX       || '20');    // relaxed for pro use
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000'); // 1 min window
+16: 
+17: // ─────────────────────────────────────────────────────────────────────────────
+18: // SCHEDULE CHECK (Brazil Timezone)
+19: // ─────────────────────────────────────────────────────────────────────────────
+20: function isBusinessHours() {
+21:     // Get current time in Brazil (Sao Paulo)
+22:     const brTimeStr = new Date().toLocaleString("en-US", {timeZone: "America/Sao_Paulo"});
+23:     const brTime = new Date(brTimeStr);
+24:     
+25:     const day = brTime.getDay(); // 0 (Sun) to 6 (Sat)
+26:     const hour = brTime.getHours();
+27: 
+28:     // Seg-Sex, 08h às 18h
+29:     if (day === 0 || day === 6) return false;
+30:     if (hour < 8 || hour >= 18) return false;
+31:     
+32:     return true;
+33: }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RATE LIMITER (per-number, in-memory)
@@ -279,6 +297,14 @@ async function startWorker(sessionName) {
             const message = JSON.parse(data[1]);
             const rawTo   = message.to || '';
             
+            // Check Business Hours Schedule
+            if (message.schedule_type === 'business_hours' && !isBusinessHours()) {
+                console.log(`[WORKER] [${sessionName}] Outside business hours. Re-queuing and sleeping 1 min.`);
+                await redis.rpush(sessionKey, data[1]); // Put it back
+                await new Promise(resolve => setTimeout(resolve, 60000)); // Wait 1 min
+                continue;
+            }
+
             console.log(`[WORKER] [${sessionName}] Sending message to: ${rawTo}`);
 
             if (isRateLimited(rawTo)) {

@@ -9,9 +9,9 @@ config({ path: path.join(__dirname, '.env') });
 
 const conn = new Client();
 conn.on('ready', () => {
-  console.log('SSH Connection Ready. Checking if client_3 profile was recreated...');
+  console.log('SSH Connection Ready. Fetching bridge logs...');
   const cmd = `
-    ls -la /data/coolify/applications/wsgc44okcckccwws4ss4kcww/bridge/tokens/
+    docker logs --tail 200 $(docker ps -q --filter name=bridge-wsgc44)
   `;
   
   conn.exec(cmd, (err, stream) => {

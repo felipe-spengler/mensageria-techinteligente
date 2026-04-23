@@ -238,7 +238,8 @@ class MessageController extends Controller
                 'to' => $to,
                 'message' => $log->message,
                 'media' => $log->media_url,
-                'session' => $session
+                'session' => $session,
+                'schedule_type' => $instance ? $instance->schedule_type : 'full_time'
             ]));
         } catch (\Exception $e) {
             Log::error('Redis Error: ' . $e->getMessage());

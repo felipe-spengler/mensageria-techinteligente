@@ -9,9 +9,11 @@ config({ path: path.join(__dirname, '.env') });
 
 const conn = new Client();
 conn.on('ready', () => {
-  console.log('SSH Connection Ready. Checking if client_3 profile was recreated...');
+  console.log('SSH Connection Ready. Checking message dates...');
   const cmd = `
-    ls -la /data/coolify/applications/wsgc44okcckccwws4ss4kcww/bridge/tokens/
+    docker exec $(docker ps -q --filter name=db-wsgc44) mysql -uapp_user -psupersenha -e "USE mensageria; SELECT id, status, created_at FROM message_logs WHERE status = 'queued' LIMIT 5;"
+    echo "Current System Time (UTC):"
+    date -u
   `;
   
   conn.exec(cmd, (err, stream) => {

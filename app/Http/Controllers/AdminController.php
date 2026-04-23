@@ -38,6 +38,27 @@ class AdminController extends Controller
                 ->count(),
         ];
 
+        // Determinar o motivo de mensagens na fila (se houver)
+        $queuedReason = null;
+        if ($stats['total_queued'] > 0) {
+            $instance = \App\Models\WhatsappInstance::where('user_id', $user->id)->first();
+            if ($instance) {
+                $status = strtoupper($instance->status ?? 'OFFLINE');
+                if (!in_array($status, ['CONNECTED', 'ISLOGGED', 'AUTHENTICATED', 'LOGGED', 'SYNCING'])) {
+                    $queuedReason = 'Aguardando conexão com WhatsApp';
+                } elseif ($instance->schedule_type === 'business_hours') {
+                    $now = now()->timezone('America/Sao_Paulo');
+                    if ($now->isWeekend() || $now->hour < 8 || $now->hour >= 18) {
+                        $queuedReason = 'Aguardando horário comercial';
+                    } else {
+                        $queuedReason = 'Processando fila (30s/msg)';
+                    }
+                } else {
+                    $queuedReason = 'Processando fila (30s/msg)';
+                }
+            }
+        }
+
         $pendingPayment = null;
         $plans = [];
         $hasActiveKey = false;
@@ -54,7 +75,7 @@ class AdminController extends Controller
             }
         }
 
-        return view('admin.index', compact('stats', 'pendingPayment', 'plans', 'hasActiveKey'));
+        return view('admin.index', compact('stats', 'pendingPayment', 'plans', 'hasActiveKey', 'queuedReason'));
     }
 
     public function tester()
@@ -93,7 +114,31 @@ class AdminController extends Controller
 
         $logs = $query->latest()->paginate(20);
 
-        return view('admin.logs', compact('logs'));
+        // Determinar o motivo de mensagens na fila
+        $queuedReason = null;
+        $queuedCount = MessageLog::when(!$user->isAdmin(), fn($q) => $q->whereHas('apiKey', fn($aq) => $aq->where('user_id', $user->id)))
+            ->where('status', 'queued')->count();
+
+        if ($queuedCount > 0) {
+            $instance = \App\Models\WhatsappInstance::where('user_id', $user->id)->first();
+            if ($instance) {
+                $status = strtoupper($instance->status ?? 'OFFLINE');
+                if (!in_array($status, ['CONNECTED', 'ISLOGGED', 'AUTHENTICATED', 'LOGGED', 'SYNCING'])) {
+                    $queuedReason = 'Aguardando conexão com WhatsApp';
+                } elseif ($instance->schedule_type === 'business_hours') {
+                    $now = now()->timezone('America/Sao_Paulo');
+                    if ($now->isWeekend() || $now->hour < 8 || $now->hour >= 18) {
+                        $queuedReason = 'Aguardando horário comercial';
+                    } else {
+                        $queuedReason = 'Processando fila (30s/msg)';
+                    }
+                } else {
+                    $queuedReason = 'Processando fila (30s/msg)';
+                }
+            }
+        }
+
+        return view('admin.logs', compact('logs', 'queuedReason'));
     }
 
     /**
