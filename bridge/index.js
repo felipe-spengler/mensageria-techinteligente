@@ -142,22 +142,21 @@ async function initWhatsApp(sessionName) {
         console.log(`[BOOT] Initializing session: ${sessionName}`);
 
         const sessionPath = path.join(__dirname, 'tokens', sessionName);
-    
-    if (fs.existsSync(sessionPath)) {
-        try {
-            const files = fs.readdirSync(sessionPath);
-            files.forEach(file => {
-                if (file.startsWith('Singleton')) {
-                    try {
-                        fs.unlinkSync(path.join(sessionPath, file));
-                        console.log(`[BOOT] [${sessionName}] Removed stale lock: ${file}`);
-                    } catch (e) {}
-                }
-            });
-        } catch (e) {}
-    }
+        
+        if (fs.existsSync(sessionPath)) {
+            try {
+                const files = fs.readdirSync(sessionPath);
+                files.forEach(file => {
+                    if (file.startsWith('Singleton')) {
+                        try {
+                            fs.unlinkSync(path.join(sessionPath, file));
+                            console.log(`[BOOT] [${sessionName}] Removed stale lock: ${file}`);
+                        } catch (e) {}
+                    }
+                });
+            } catch (e) {}
+        }
 
-    try {
         const client = await wppconnect.create({
             session: sessionName,
             catchQR: (base64Qr) => {
