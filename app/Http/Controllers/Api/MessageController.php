@@ -102,17 +102,56 @@ class MessageController extends Controller
             [$response, $url] = $this->requestBridge('qrcode/' . $instance->session_name);
             
             if ($response->status() === 404) {
+                $sessionStatus = $response->json()['sessionStatus'] ?? 'unknown';
+                
+                // If it's already connected, return a friendly JSON response instead of a 404 error
+                if (in_array(strtoupper($sessionStatus), ['CONNECTED', 'ISLOGGED', 'AUTHENTICATED'])) {
+                    return response()->json([
+                        'status' => 'connected',
+                        'message' => 'Dispositivo já está conectado e pronto para uso.',
+                        'qr_code' => null
+                    ], 200);
+                }
+
                 return response()->json([
+                    'status' => strtolower($sessionStatus),
                     'error' => 'QR Code not ready. Ensure instance is starting.',
-                    'session_status' => $response->json()['sessionStatus'] ?? 'unknown'
                 ], 404);
             }
 
+            // Return the image
             return response($response->body(), 200)
                 ->header('Content-Type', 'image/png');
         } catch (\Exception $e) {
             Log::error('API QR Code Error: ' . $e->getMessage());
             return response()->json(['error' => 'Bridge offline or unreachable'], 503);
+        }
+    }
+
+    public function status(Request $request)
+    {
+        $apiKey = $request->attributes->get('api_key');
+        $instance = \App\Models\WhatsappInstance::where('user_id', $apiKey->user_id)->first();
+        
+        if (!$instance) return response()->json(['status' => 'offline', 'error' => 'No instance found']);
+
+        try {
+            [$response, $url] = $this->requestBridge('status/' . $instance->session_name);
+            $payload = $response->json();
+            
+            $bridgeStatus = strtoupper($payload['status'] ?? 'OFFLINE');
+            $successStates = ['CONNECTED', 'ISLOGGED', 'LOGGED', 'AUTHENTICATED', 'SYNCING'];
+            
+            return response()->json([
+                'status' => in_array($bridgeStatus, $successStates) ? 'connected' : strtolower($bridgeStatus),
+                'raw_status' => $payload['status'] ?? 'offline',
+                'session_name' => $instance->session_name
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'offline',
+                'error' => 'Bridge unreachable'
+            ], 503);
         }
     }
 

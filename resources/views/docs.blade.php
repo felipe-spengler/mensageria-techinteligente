@@ -125,6 +125,24 @@ curl -X POST "{{ url('/api/v1/send') }}" \
     <div class="space-y-6 pt-8 border-t border-white/5">
         <div class="flex items-center space-x-3">
             <span class="bg-blue-600 px-3 py-1 rounded text-[10px] font-black text-white uppercase tracking-tighter">GET</span>
+            <h4 class="text-xl font-bold text-white">Status da Conexão</h4>
+        </div>
+        <p class="text-gray-400 text-sm">Verifica se o seu WhatsApp está conectado e pronto para enviar mensagens.</p>
+        <div class="bg-dash-900 border border-white/5 p-4 rounded-xl font-mono text-sm text-blue-400">
+            {{ url('/api/v1/status') }}
+        </div>
+        <div class="bg-black/60 rounded-2xl p-6 border border-white/10 text-[11px] font-mono leading-relaxed text-blue-200 overflow-x-auto">
+<pre>
+curl -X GET "{{ url('/api/v1/status') }}" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+</pre>
+        </div>
+    </div>
+
+    <!-- Endpoint: Logs -->
+    <div class="space-y-6 pt-8 border-t border-white/5">
+        <div class="flex items-center space-x-3">
+            <span class="bg-blue-600 px-3 py-1 rounded text-[10px] font-black text-white uppercase tracking-tighter">GET</span>
             <h4 class="text-xl font-bold text-white">Logs de Mensagens</h4>
         </div>
         <p class="text-gray-400 text-sm">Retorna o histórico de mensagens enviadas e seus respectivos status.</p>
