@@ -20,7 +20,7 @@
                 @if($pendingPayment->payload)
                     <button onclick="navigator.clipboard.writeText('{{ $pendingPayment->payload }}'); alert('Código PIX Copiado!')" class="btn-grad px-8 py-4 rounded-3xl text-sm font-bold shadow-lg shadow-blue-900/40 whitespace-nowrap">Copiar Código PIX</button>
                 @endif
-                <a href="/" class="bg-dash-800 hover:bg-dash-700 px-8 py-4 rounded-3xl text-sm font-bold border border-white/5 transition whitespace-nowrap">Ver Planos</a>
+                <a href="#planos" class="bg-dash-800 hover:bg-dash-700 px-8 py-4 rounded-3xl text-sm font-bold border border-white/5 transition whitespace-nowrap">Ver Planos</a>
             </div>
         </div>
     </div>
@@ -91,8 +91,8 @@
         </div>
     </div>
     
-    @if(!$hasActiveKey && !$pendingPayment && !auth()->user()->isAdmin())
-    <div class="mt-12 space-y-8">
+    @if(!$hasActiveKey && !auth()->user()->isAdmin())
+    <div id="planos" class="mt-12 space-y-8">
         <div class="text-center">
             <h3 class="text-2xl font-bold text-white mb-2">🚀 Comece Agora</h3>
             <p class="text-gray-400 text-sm">Escolha um dos planos abaixo para liberar o envio de mensagens via API.</p>

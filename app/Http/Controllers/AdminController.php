@@ -50,9 +50,7 @@ class AdminController extends Controller
                     ->latest()
                     ->first();
                 
-                if (!$pendingPayment) {
-                    $plans = Plan::all();
-                }
+                $plans = Plan::all();
             }
         }
 

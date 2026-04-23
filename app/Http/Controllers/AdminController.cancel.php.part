@@ -1,0 +1,9 @@
+    public function cancelPayment(PixTransaction $payment)
+    {
+        if ($payment->user_id !== Auth::id()) {
+            abort(403);
+        }
+        $payment->status = 'canceled';
+        $payment->save();
+        return back()->with('success', 'Pedido cancelado. Você pode tentar novamente agora.');
+    }
