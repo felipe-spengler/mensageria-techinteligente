@@ -25,11 +25,14 @@ if [ "$DB_CONNECTION" = "mysql" ]; then
     echo "MySQL is up!"
 fi
 
-# Run migrations if database is ready
-php artisan migrate --force --seed
+# Run migrations and publish assets only in the main app container (not in worker/scheduler)
+if [ "$#" -eq 0 ]; then
+    # Run migrations if database is ready
+    php artisan migrate --force --seed
 
-# Publish Filament assets to fix 404s
-php artisan filament:assets
+    # Publish Filament assets to fix 404s
+    php artisan filament:assets
+fi
 
 # If arguments are passed, execute them (for worker/etc), else start Apache
 if [ "$#" -gt 0 ]; then
