@@ -338,8 +338,8 @@ async function startWorker(sessionName) {
                 }
             }
 
-            // Cooldown per-session: 2 seconds
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Cooldown per-session: 30 seconds (safety first)
+            await new Promise(resolve => setTimeout(resolve, 30000));
 
         } catch (e) {
             console.error(`[WORKER] [${sessionName}] Loop error:`, e.message);
