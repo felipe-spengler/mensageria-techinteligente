@@ -20,8 +20,9 @@ RUN apt-get update && apt-get install -y \
   apt-get install -y nodejs && \
   apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# PHP extensions e Apache features
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd intl zip && \
+# Install PHP extensions helper and extensions (much faster and handles deps automatically)
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
+RUN install-php-extensions pdo_mysql mbstring exif pcntl bcmath gd intl zip && \
     a2enmod rewrite
 
 # Apache DocumentRoot + suppress ServerName FQDN warning
