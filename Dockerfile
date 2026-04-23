@@ -1,5 +1,22 @@
-# Dockerfile otimizado para rebuild incremental e cache eficiente
 FROM php:8.4-apache
+
+# Declare build arguments to avoid warnings and allow use during build
+ARG APP_ENV=production
+ARG APP_DEBUG=false
+ARG APP_KEY
+ARG APP_URL
+ARG DB_CONNECTION
+ARG DB_HOST
+ARG DB_PORT
+ARG DB_DATABASE
+ARG DB_USERNAME
+ARG DB_PASSWORD
+ARG ASAAS_API_KEY
+ARG ASAAS_MODE
+ARG REDIS_HOST
+ARG REDIS_PORT
+ARG REDIS_PASSWORD
+ARG REDIS_URL
 
 # Metadata
 LABEL maintainer="TechInteligente" \
@@ -34,7 +51,8 @@ WORKDIR /var/www/html
 # Composer (cache layer) e dependências PHP
 COPY composer.json composer.lock ./
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-RUN COMPOSER_MEMORY_LIMIT=-1 composer update --no-interaction --optimize-autoloader --no-scripts --ignore-platform-reqs
+# Usamos install em vez de update para garantir consistência com o lock file
+RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --optimize-autoloader --no-scripts --ignore-platform-reqs
 
 # Node deps (cache atômico)
 COPY package.json ./

@@ -1,5 +1,11 @@
 FROM node:20
 
+# Declare build arguments to avoid warnings
+ARG APP_ENV=production
+ARG INTERNAL_KEY
+ARG REDIS_URL
+ARG WEBHOOK_URL
+
 LABEL maintainer="TechInteligente"
 
 # Dependências do Puppeteer (só muda se base muda)
