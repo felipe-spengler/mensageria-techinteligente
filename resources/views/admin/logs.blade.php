@@ -51,6 +51,7 @@
                             <tr class="bg-dash-900/50 border-b border-white/5">
                                 <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Destinatário</th>
                                 <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Mensagem</th>
+                                <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Instância</th>
                                 <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Usuário/Plano</th>
                                 <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Status</th>
                                 <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Data</th>
@@ -70,6 +71,17 @@
                                     </td>
                                     <td class="px-8 py-6">
                                         <p class="text-xs text-gray-500 max-w-md line-clamp-2 leading-relaxed" title="{{ $log->message }}">{{ $log->message }}</p>
+                                    </td>
+                                    <td class="px-8 py-6">
+                                        <div class="flex flex-col">
+                                            <span class="text-[10px] font-mono text-blue-400 uppercase tracking-tighter">
+                                                @php
+                                                    $instance = \App\Models\WhatsappInstance::where('user_id', $log->apiKey->user_id)->first();
+                                                    echo $instance ? $instance->session_name : 'mensageria-tech';
+                                                @endphp
+                                            </span>
+                                            <span class="text-[8px] text-gray-600 mt-0.5">Sessão WPP</span>
+                                        </div>
                                     </td>
                                     <td class="px-8 py-6">
                                         <div class="flex flex-col">
