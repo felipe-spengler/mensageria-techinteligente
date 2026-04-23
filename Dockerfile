@@ -1,23 +1,5 @@
 FROM php:8.4-apache
 
-# Declare build arguments to avoid warnings and allow use during build
-ARG APP_ENV=production
-ARG APP_DEBUG=false
-ARG APP_KEY
-ARG APP_URL
-ARG DB_CONNECTION
-ARG DB_HOST
-ARG DB_PORT
-ARG DB_DATABASE
-ARG DB_USERNAME
-ARG DB_PASSWORD
-ARG ASAAS_API_KEY
-ARG ASAAS_MODE
-ARG REDIS_HOST
-ARG REDIS_PORT
-ARG REDIS_PASSWORD
-ARG REDIS_URL
-
 # Metadata
 LABEL maintainer="TechInteligente" \
       description="SaaS WhatsApp App"
@@ -45,6 +27,24 @@ RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd intl zip && \
 # Apache DocumentRoot + suppress ServerName FQDN warning
 RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf && \
     echo 'ServerName localhost' >> /etc/apache2/apache2.conf
+
+# Declare build arguments here to avoid busting cache for heavy layers above
+ARG APP_ENV=production
+ARG APP_DEBUG=false
+ARG APP_KEY
+ARG APP_URL
+ARG DB_CONNECTION
+ARG DB_HOST
+ARG DB_PORT
+ARG DB_DATABASE
+ARG DB_USERNAME
+ARG DB_PASSWORD
+ARG ASAAS_API_KEY
+ARG ASAAS_MODE
+ARG REDIS_HOST
+ARG REDIS_PORT
+ARG REDIS_PASSWORD
+ARG REDIS_URL
 
 WORKDIR /var/www/html
 
