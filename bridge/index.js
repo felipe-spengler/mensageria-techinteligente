@@ -130,14 +130,25 @@ async function initWhatsApp(sessionName) {
     }
 
     // Global Lock: Evita que múltiplos Chromiums iniciem simultaneamente,
-    // o que causa picos de CPU e falhas no handshake do QR Code
+    // o que causa picos de CPU e falhas no handshake do QR Code.
+    // Adicionado timeout de 30s para não travar o boot se uma sessão ficar esperando QR.
     while (isInitializingGlobal) {
         console.log(`[BOOT] [${sessionName}] Another session is initializing, waiting...`);
         await new Promise(resolve => setTimeout(resolve, 5000));
     }
 
+    let lockTimer;
     try {
         isInitializingGlobal = true;
+        
+        // Timer de segurança para liberar o lock se o wppconnect demorar demais (ex: esperando scan)
+        lockTimer = setTimeout(() => {
+            if (isInitializingGlobal) {
+                console.log(`[BOOT] [${sessionName}] Lock timeout reached, releasing for next session.`);
+                isInitializingGlobal = false;
+            }
+        }, 30000);
+
         connectionStatuses.set(sessionName, 'connecting');
         console.log(`[BOOT] Initializing session: ${sessionName}`);
 
@@ -219,6 +230,7 @@ async function initWhatsApp(sessionName) {
         }, 30000);
     } finally {
         isInitializingGlobal = false;
+        if (typeof lockTimer !== 'undefined') clearTimeout(lockTimer);
     }
 }
 
