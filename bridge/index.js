@@ -244,8 +244,8 @@ async function loadExistingSessions() {
             console.error(`[BOOT] Failed to load ${session}:`, e.message);
         }
         
-        // Delay extra de segurança
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        // Delay extra de segurança aumentado para 10s para permitir que o Chromium respire
+        await new Promise(resolve => setTimeout(resolve, 10000));
     }
 }
 
@@ -488,17 +488,16 @@ app.post('/logout/:session', async (req, res) => {
 app.get('/health', async (req, res) => {
     const heapMB  = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1);
     const rssMB   = (process.memoryUsage().rss       / 1024 / 1024).toFixed(1);
-    let   queueLen = 0;
-    try { queueLen = await redis.llen('wpp_messages'); } catch (_) {}
-
+    
+    // Simplificado: removemos a chamada ao Redis que pode travar se o event loop estiver ocupado
+    // ou se houver problemas de rede interna, focando no estado do processo Node
     const ok = !isShuttingDown && parseFloat(heapMB) < HEAP_LIMIT_MB;
+    
     res.status(ok ? 200 : 503).json({
         ok,
         heap_mb:        parseFloat(heapMB),
         heap_limit_mb:  HEAP_LIMIT_MB,
         rss_mb:         parseFloat(rssMB),
-        queue_depth:    queueLen,
-        queue_max:      QUEUE_MAX_SIZE,
         connection:     connectionStatuses.get('mensageria-tech') || 'offline',
         uptime_s:       Math.floor(process.uptime()),
         shuttingDown:   isShuttingDown,

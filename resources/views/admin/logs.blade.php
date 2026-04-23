@@ -75,10 +75,7 @@
                                     <td class="px-8 py-6">
                                         <div class="flex flex-col">
                                             <span class="text-[10px] font-mono text-blue-400 uppercase tracking-tighter">
-                                                @php
-                                                    $instance = \App\Models\WhatsappInstance::where('user_id', $log->apiKey->user_id)->first();
-                                                    echo $instance ? $instance->session_name : 'mensageria-tech';
-                                                @endphp
+                                                {{ $log->instance->session_name ?? 'mensageria-tech' }}
                                             </span>
                                             <span class="text-[8px] text-gray-600 mt-0.5">Sessão WPP</span>
                                         </div>

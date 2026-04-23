@@ -114,6 +114,14 @@ class AdminController extends Controller
         }
 
         $logs = $query->latest()->paginate(20);
+        
+        // Pré-carrega as instâncias para evitar N+1 queries na view
+        $userIds = $logs->pluck('apiKey.user_id')->unique()->filter();
+        $instances = \App\Models\WhatsappInstance::whereIn('user_id', $userIds)->get()->keyBy('user_id');
+        
+        $logs->getCollection()->each(function($log) use ($instances) {
+            $log->setRelation('instance', $instances->get($log->apiKey->user_id));
+        });
 
         // Determinar o motivo de mensagens na fila
         $queuedReason = null;
