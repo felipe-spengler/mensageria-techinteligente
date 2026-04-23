@@ -13,24 +13,24 @@ const AXIOS_TIMEOUT_MS     = parseInt(process.env.AXIOS_TIMEOUT_MS     || '30000
 const QUEUE_MAX_SIZE       = parseInt(process.env.QUEUE_MAX_SIZE       || '10000'); // increased queue depth
 const RATE_LIMIT_MAX       = parseInt(process.env.RATE_LIMIT_MAX       || '20');    // relaxed for pro use
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000'); // 1 min window
-16: 
-17: // ─────────────────────────────────────────────────────────────────────────────
-18: // SCHEDULE CHECK (Brazil Timezone)
-19: // ─────────────────────────────────────────────────────────────────────────────
-20: function isBusinessHours() {
-21:     // Get current time in Brazil (Sao Paulo)
-22:     const brTimeStr = new Date().toLocaleString("en-US", {timeZone: "America/Sao_Paulo"});
-23:     const brTime = new Date(brTimeStr);
-24:     
-25:     const day = brTime.getDay(); // 0 (Sun) to 6 (Sat)
-26:     const hour = brTime.getHours();
-27: 
-28:     // Seg-Sex, 08h às 18h
-29:     if (day === 0 || day === 6) return false;
-30:     if (hour < 8 || hour >= 18) return false;
-31:     
-32:     return true;
-33: }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SCHEDULE CHECK (Brazil Timezone)
+// ─────────────────────────────────────────────────────────────────────────────
+function isBusinessHours() {
+    // Get current time in Brazil (Sao Paulo)
+    const brTimeStr = new Date().toLocaleString("en-US", {timeZone: "America/Sao_Paulo"});
+    const brTime = new Date(brTimeStr);
+    
+    const day = brTime.getDay(); // 0 (Sun) to 6 (Sat)
+    const hour = brTime.getHours();
+
+    // Seg-Sex, 08h às 18h
+    if (day === 0 || day === 6) return false;
+    if (hour < 8 || hour >= 18) return false;
+    
+    return true;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RATE LIMITER (per-number, in-memory)
