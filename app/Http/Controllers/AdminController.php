@@ -44,17 +44,18 @@ class AdminController extends Controller
             $instance = \App\Models\WhatsappInstance::where('user_id', $user->id)->first();
             if ($instance) {
                 $status = strtoupper($instance->status ?? 'OFFLINE');
+                // Aceita qualquer variação de conectado para não mostrar banner de erro falso
                 if (!in_array($status, ['CONNECTED', 'ISLOGGED', 'AUTHENTICATED', 'LOGGED', 'SYNCING'])) {
                     $queuedReason = 'Aguardando conexão com WhatsApp';
                 } elseif ($instance->schedule_type === 'business_hours') {
                     $now = now()->timezone('America/Sao_Paulo');
                     if ($now->isWeekend() || $now->hour < 8 || $now->hour >= 18) {
-                        $queuedReason = 'Aguardando horário comercial';
+                        $queuedReason = 'Aguardando horário comercial (Seg-Sex, 08h-18h)';
                     } else {
-                        $queuedReason = 'Processando fila (30s/msg)';
+                        $queuedReason = 'Processando fila (intervalo de 30s/msg)';
                     }
                 } else {
-                    $queuedReason = 'Processando fila (30s/msg)';
+                    $queuedReason = 'Processando fila (intervalo de 30s/msg)';
                 }
             }
         }
@@ -128,12 +129,12 @@ class AdminController extends Controller
                 } elseif ($instance->schedule_type === 'business_hours') {
                     $now = now()->timezone('America/Sao_Paulo');
                     if ($now->isWeekend() || $now->hour < 8 || $now->hour >= 18) {
-                        $queuedReason = 'Aguardando horário comercial';
+                        $queuedReason = 'Aguardando horário comercial (Seg-Sex, 08h-18h)';
                     } else {
-                        $queuedReason = 'Processando fila (30s/msg)';
+                        $queuedReason = 'Processando fila (intervalo de 30s/msg)';
                     }
                 } else {
-                    $queuedReason = 'Processando fila (30s/msg)';
+                    $queuedReason = 'Processando fila (intervalo de 30s/msg)';
                 }
             }
         }
