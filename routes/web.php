@@ -26,6 +26,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/admin/whatsapp', [\App\Http\Controllers\AdminController::class, 'whatsapp'])->name('admin.whatsapp');
         Route::get('/admin/tester', [\App\Http\Controllers\AdminController::class, 'tester'])->name('admin.tester');
         Route::post('/admin/whatsapp/start', [\App\Http\Controllers\AdminController::class, 'startWhatsapp'])->name('admin.whatsapp.start');
+        Route::post('/admin/whatsapp/logout', [\App\Http\Controllers\AdminController::class, 'logoutWhatsapp'])->name('admin.whatsapp.logout');
         Route::post('/admin/whatsapp/schedule', [\App\Http\Controllers\AdminController::class, 'updateSchedule'])->name('admin.whatsapp.schedule');
         
         // API Keys logic

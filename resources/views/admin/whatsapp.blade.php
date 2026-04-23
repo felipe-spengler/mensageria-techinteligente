@@ -233,7 +233,22 @@
 
                 async logoutWhatsApp() {
                     if (!confirm('Deseja realmente desconectar este WhatsApp?')) return;
-                    // TODO: Implement bridge logout route if needed
+                    this.loading = true;
+                    try {
+                        const res = await fetch('{{ route('admin.whatsapp.logout') }}', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        if (res.ok) {
+                            this.status = 'DISCONNECTED';
+                            this.qrCode = null;
+                            this.refreshStatus();
+                        }
+                    } catch(e) { console.error('Logout Error:', e.message); }
+                    this.loading = false;
                 }
             }
         }

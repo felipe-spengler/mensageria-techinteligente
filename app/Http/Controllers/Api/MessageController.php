@@ -219,18 +219,26 @@ class MessageController extends Controller
 
             $redis = \Illuminate\Support\Facades\Redis::connection();
             
-            $session = 'mensageria-tech';
             $instance = \App\Models\WhatsappInstance::where('user_id', $log->apiKey->user_id)->first();
             
-            if ($instance) {
-                $session = $instance->session_name;
+            if (!$instance) {
+                $log->update([
+                    'status' => 'failed',
+                    'error_message' => 'Nenhuma instância de WhatsApp configurada. Acesse o painel e conecte seu dispositivo.'
+                ]);
+                return;
+            }
 
-                // --- AUTO-START LOGIC ---
-                // Se a instância não está ativa (connected), avisamos o bridge para tentar ligar
-                // Isso garante que se o servidor reiniciar, o primeiro envio de API "acorde" a instância.
-                if ($instance->status !== 'connected' && $instance->status !== 'qr_ready') {
-                    $this->triggerBridgeStart($session);
-                }
+            $session = $instance->session_name;
+
+            // --- AUTO-START LOGIC ---
+            // Se a instância não está ativa (connected), avisamos o bridge para tentar ligar
+            // Isso garante que se o servidor reiniciar, o primeiro envio de API "acorde" a instância.
+            $status = strtoupper($instance->status ?? 'OFFLINE');
+            $successStates = ['CONNECTED', 'ISLOGGED', 'LOGGED', 'AUTHENTICATED', 'SYNCING'];
+            
+            if (!in_array($status, $successStates) && $status !== 'QR_READY') {
+                $this->triggerBridgeStart($session);
             }
 
             $redis->rpush('wpp_messages:' . $session, json_encode([
@@ -239,7 +247,7 @@ class MessageController extends Controller
                 'message' => $log->message,
                 'media' => $log->media_url,
                 'session' => $session,
-                'schedule_type' => $instance ? $instance->schedule_type : 'full_time'
+                'schedule_type' => $instance->schedule_type ?? 'full_time'
             ]));
         } catch (\Exception $e) {
             Log::error('Redis Error: ' . $e->getMessage());

@@ -172,6 +172,23 @@ class AdminController extends Controller
         return back()->with('success', 'Iniciando conexão...');
     }
 
+    public function logoutWhatsapp()
+    {
+        $user = Auth::user();
+        $instance = \App\Models\WhatsappInstance::where('user_id', $user->id)->firstOrFail();
+        
+        // Call bridge to logout
+        $bridgeUrl = env('WPP_BRIDGE_URL', 'http://bridge:3000');
+        try {
+            \Illuminate\Support\Facades\Http::timeout(10)->post("{$bridgeUrl}/logout/{$instance->session_name}");
+            $instance->update(['status' => 'disconnected']);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error logging out bridge session: ' . $e->getMessage());
+        }
+
+        return back()->with('success', 'Dispositivo desconectado com sucesso.');
+    }
+
     /**
      * Save Global Asaas Settings
      */

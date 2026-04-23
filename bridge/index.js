@@ -459,6 +459,31 @@ app.post('/start/:session', async (req, res) => {
     res.json({ status: 'initializing', session });
 });
 
+app.post('/logout/:session', async (req, res) => {
+    const session = req.params.session;
+    const client = clients.get(session);
+    
+    console.log(`[${session}] Logout request received`);
+    
+    if (client) {
+        try {
+            await client.logout();
+            clients.delete(session);
+            qrCodes.delete(session);
+            connectionStatuses.set(session, 'disconnected');
+            console.log(`[${session}] Logged out successfully`);
+            res.json({ status: 'logged_out', session });
+        } catch (e) {
+            console.error(`[${session}] Logout error:`, e.message);
+            res.status(500).json({ error: e.message, session });
+        }
+    } else {
+        // Se não tem cliente ativo, mas queremos garantir que o status seja resetado
+        connectionStatuses.set(session, 'disconnected');
+        res.json({ status: 'not_connected', session });
+    }
+});
+
 // Health endpoint for Docker HEALTHCHECK
 app.get('/health', async (req, res) => {
     const heapMB  = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1);
