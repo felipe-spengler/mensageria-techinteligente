@@ -2,6 +2,8 @@ const wppconnect = require('@wppconnect-team/wppconnect');
 const Redis = require('ioredis');
 const axios = require('axios');
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -116,6 +118,7 @@ const clients = new Map();
 const qrCodes = new Map();
 const connectionStatuses = new Map();
 let isShuttingDown = false;
+let isInitializingGlobal = false;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WHATSAPP INIT
@@ -126,13 +129,19 @@ async function initWhatsApp(sessionName) {
         return;
     }
 
-    connectionStatuses.set(sessionName, 'connecting');
-    console.log(`[BOOT] Initializing session: ${sessionName}`);
+    // Global Lock: Evita que múltiplos Chromiums iniciem simultaneamente,
+    // o que causa picos de CPU e falhas no handshake do QR Code
+    while (isInitializingGlobal) {
+        console.log(`[BOOT] [${sessionName}] Another session is initializing, waiting...`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+    }
 
-    // Remove stale Chromium profile locks
-    const fs = require('fs');
-    const path = require('path');
-    const sessionPath = path.join(__dirname, 'tokens', sessionName);
+    try {
+        isInitializingGlobal = true;
+        connectionStatuses.set(sessionName, 'connecting');
+        console.log(`[BOOT] Initializing session: ${sessionName}`);
+
+        const sessionPath = path.join(__dirname, 'tokens', sessionName);
     
     if (fs.existsSync(sessionPath)) {
         try {
@@ -174,7 +183,7 @@ async function initWhatsApp(sessionName) {
             sessionTokenPath: path.join(__dirname, 'tokens'),
             puppeteerOptions: {
                 userDataDir: sessionPath,
-                dumpio: true, // Output browser logs to stdout for better debugging
+                dumpio: false, // Desativado para reduzir ruído nos logs
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
@@ -184,13 +193,13 @@ async function initWhatsApp(sessionName) {
                     '--disable-web-security',
                     '--no-first-run',
                     '--no-default-browser-check',
-                    '--no-zygote',
-                    '--single-process',
                     '--disable-software-rasterizer',
                     '--disable-canvas-aa',
                     '--disable-2d-canvas-clip-aa',
                     '--disable-gl-drawing-for-tests',
-                    '--js-flags=--max-old-space-size=512',
+                    '--js-flags=--max-old-space-size=1024',
+                    '--disable-setuid-sandbox',
+                    '--remote-debugging-port=0',
                 ]
             },
             autoClose: false
@@ -209,6 +218,8 @@ async function initWhatsApp(sessionName) {
                 initWhatsApp(sessionName).catch(e => console.error(`[${sessionName}] Retry failed:`, e.message));
             }
         }, 30000);
+    } finally {
+        isInitializingGlobal = false;
     }
 }
 
@@ -216,8 +227,6 @@ async function initWhatsApp(sessionName) {
 // BOOTUP: LOAD ALL EXISTING SESSIONS
 // ─────────────────────────────────────────────────────────────────────────────
 async function loadExistingSessions() {
-    const fs = require('fs');
-    const path = require('path');
     const tokensPath = path.join(__dirname, 'tokens');
 
     if (!fs.existsSync(tokensPath)) {
