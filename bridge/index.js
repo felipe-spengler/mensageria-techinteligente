@@ -149,13 +149,14 @@ async function initWhatsApp(sessionName) {
                 console.log(`[${sessionName}] Status updated:`, cleanStatus);
                 notifyLaravelStatus(sessionName, cleanStatus);
             },
-            headless: 'new', // Use newer headless mode
+            headless: true, // Use classic headless mode for better stability in some Docker environments
             useChrome: false,
             executablePath: '/usr/bin/chromium',
-            protocolTimeout: 0, // Disable timeout for initialization
+            protocolTimeout: 60000, // Increase protocol timeout
             sessionTokenPath: path.join(__dirname, 'tokens'),
             puppeteerOptions: {
                 userDataDir: sessionPath,
+                dumpio: true, // Output browser logs to stdout for better debugging
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
@@ -165,6 +166,12 @@ async function initWhatsApp(sessionName) {
                     '--disable-web-security',
                     '--no-first-run',
                     '--no-default-browser-check',
+                    '--no-zygote',
+                    '--single-process',
+                    '--disable-software-rasterizer',
+                    '--disable-canvas-aa',
+                    '--disable-2d-canvas-clip-aa',
+                    '--disable-gl-drawing-for-tests',
                     '--js-flags=--max-old-space-size=512',
                 ]
             },

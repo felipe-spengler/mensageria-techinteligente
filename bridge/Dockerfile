@@ -8,11 +8,35 @@ ARG WEBHOOK_URL
 
 LABEL maintainer="TechInteligente"
 
-# Dependências do Puppeteer (só muda se base muda)
+# Dependências do Puppeteer/Chromium (estáveis para Debian/Node 20)
 RUN apt-get update && apt-get install -y \
     chromium \
-    ca-certificates fonts-liberation libasound2 libatk-bridge2.0-0 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 libfontconfig1 libgbm1 libgcc1 libgconf-2-4 libgdk-pixbuf2.0-0 libglib2.0-0 libgtk-3-0 libnspr4 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 lsb-release wget xdg-utils libnss3 libdrm2 libxkbcommon0 \
+    fonts-ipafont-gothic \
+    fonts-freefont-ttf \
+    fonts-thai-tlwg \
+    fonts-kacst \
+    fonts-symbola \
+    fonts-noto-color-emoji \
+    libnss3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libpango-1.0-0 \
+    libcairo2 \
+    libasound2 \
+    wget \
+    ca-certificates \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Variáveis para o Puppeteer encontrar o Chromium corretamente
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
 
