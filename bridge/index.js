@@ -173,10 +173,11 @@ async function initWhatsApp(sessionName) {
                 console.log(`[${sessionName}] QR Code updated`);
             },
             statusFind: (status) => {
-                // Map status to a clean format before saving/notifying
-                let cleanStatus = status.toString().toLowerCase();
-                if (['islogged', 'logged', 'authenticated', 'main', 'syncing', 'connected'].includes(cleanStatus)) {
-                    cleanStatus = 'connected';
+                let cleanStatus = status.toLowerCase();
+                
+                // Normalização: Se não está logado, para a UI é "pronto para scan"
+                if (cleanStatus === 'notlogged' || cleanStatus === 'desconnectedmobile') {
+                    cleanStatus = 'qr_ready';
                 }
                 
                 connectionStatuses.set(sessionName, cleanStatus);
