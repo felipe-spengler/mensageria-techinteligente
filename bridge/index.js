@@ -190,6 +190,7 @@ async function initWhatsApp(sessionName) {
             sessionTokenPath: path.join(__dirname, 'tokens'),
             disableWelcome: true, // Speed up startup
             updatesLog: false,
+            waitForLogin: false, // LIBERA O LOCK RÁPIDO: Não espera logar para retornar o client
             puppeteerOptions: {
                 userDataDir: sessionPath,
                 dumpio: false,
@@ -231,12 +232,22 @@ async function initWhatsApp(sessionName) {
             autoClose: false
         });
 
+        // LIBERA O LOCK AGORA: O navegador já abriu, a CPU já "respirou".
+        // O restante (esperar scan) não consome CPU pesada.
+        isInitializingGlobal = false;
+        if (typeof lockTimer !== 'undefined') clearTimeout(lockTimer);
+
         clients.set(sessionName, client);
-        console.log(`[${sessionName}] WhatsApp Client Ready!`);
+        console.log(`[${sessionName}] WhatsApp Client Ready (Waiting for Scan or Connected)!`);
         startWorker(sessionName);
     } catch (err) {
         console.error(`[${sessionName}] Error creating client:`, err.message);
         connectionStatuses.set(sessionName, 'failed');
+        
+        // Se deu erro, precisamos garantir que o lock foi liberado
+        isInitializingGlobal = false;
+        if (typeof lockTimer !== 'undefined') clearTimeout(lockTimer);
+
         // Retry logic for stability: try again in 30s once
         setTimeout(() => {
             if (!clients.has(sessionName)) {
@@ -244,9 +255,6 @@ async function initWhatsApp(sessionName) {
                 initWhatsApp(sessionName).catch(e => console.error(`[${sessionName}] Retry failed:`, e.message));
             }
         }, 30000);
-    } finally {
-        isInitializingGlobal = false;
-        if (typeof lockTimer !== 'undefined') clearTimeout(lockTimer);
     }
 }
 
