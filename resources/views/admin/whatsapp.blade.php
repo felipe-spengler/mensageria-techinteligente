@@ -91,7 +91,7 @@
                         <template x-if="status === 'INITIALIZING' || status === 'CONNECTING' || (status === 'QR_READY' && !qrCode)">
                             <div class="flex flex-col items-center">
                                 <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
-                                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">Gerando Código<br><span class="text-[8px] opacity-50">Isso pode levar até 30s...</span></p>
+                                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">Iniciando motor WhatsApp<br><span class="text-[8px] opacity-50 text-blue-400">O QR Code aparecerá em instantes...</span></p>
                             </div>
                         </template>
                         
@@ -154,7 +154,7 @@
 
                 init() {
                     this.refreshStatus();
-                    this.pollingToken = setInterval(() => this.refreshStatus(), 10000);
+                    this.pollingToken = setInterval(() => this.refreshStatus(), 5000);
                     
                     // Auto-start if offline
                     setTimeout(() => {
@@ -207,10 +207,10 @@
                             const quickPoll = setInterval(async () => {
                                 await this.refreshStatus();
                                 attempts++;
-                                if (this.status === 'QR_READY' || this.status === 'CONNECTED' || attempts > 20) {
+                                if (this.status === 'QR_READY' || this.status === 'CONNECTED' || attempts > 30) {
                                     clearInterval(quickPoll);
                                 }
-                            }, 3000);
+                            }, 1500);
                         }
                     } catch(e) { console.error('Start Error:', e.message); }
                     this.loading = false;

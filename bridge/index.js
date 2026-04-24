@@ -131,10 +131,10 @@ async function initWhatsApp(sessionName) {
 
     // Global Lock: Evita que múltiplos Chromiums iniciem simultaneamente,
     // o que causa picos de CPU e falhas no handshake do QR Code.
-    // Adicionado timeout de 30s para não travar o boot se uma sessão ficar esperando QR.
+    // Reduzido o intervalo de espera de 5s para 1s para maior agilidade.
     while (isInitializingGlobal) {
         console.log(`[BOOT] [${sessionName}] Another session is initializing, waiting...`);
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     let lockTimer;
@@ -186,14 +186,16 @@ async function initWhatsApp(sessionName) {
                 console.log(`[${sessionName}] Status updated:`, cleanStatus);
                 notifyLaravelStatus(sessionName, cleanStatus);
             },
-            headless: true, // Use classic headless mode for better stability in some Docker environments
+            headless: 'new', // Use newer headless mode for better performance
             useChrome: false,
             executablePath: '/usr/bin/chromium',
-            protocolTimeout: 60000, // Increase protocol timeout
+            protocolTimeout: 60000, 
             sessionTokenPath: path.join(__dirname, 'tokens'),
+            disableWelcome: true, // Speed up startup
+            updatesLog: false,
             puppeteerOptions: {
                 userDataDir: sessionPath,
-                dumpio: false, // Desativado para reduzir ruído nos logs
+                dumpio: false,
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
@@ -208,8 +210,16 @@ async function initWhatsApp(sessionName) {
                     '--disable-2d-canvas-clip-aa',
                     '--disable-gl-drawing-for-tests',
                     '--js-flags=--max-old-space-size=1024',
-                    '--disable-setuid-sandbox',
                     '--remote-debugging-port=0',
+                    '--disable-infobars',
+                    '--no-pings',
+                    '--disable-notifications',
+                    '--disable-background-networking',
+                    '--disable-default-apps',
+                    '--disable-sync',
+                    '--metrics-recording-only',
+                    '--proxy-server="direct://"',
+                    '--proxy-bypass-list=*'
                 ]
             },
             autoClose: false
@@ -264,8 +274,8 @@ async function loadExistingSessions() {
             console.error(`[BOOT] Failed to load ${session}:`, e.message);
         }
         
-        // Delay extra de segurança aumentado para 10s para permitir que o Chromium respire
-        await new Promise(resolve => setTimeout(resolve, 10000));
+        // Delay extra de segurança reduzido para 2s para acelerar o boot total
+        await new Promise(resolve => setTimeout(resolve, 2000));
     }
 }
 
