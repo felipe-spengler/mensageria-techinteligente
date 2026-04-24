@@ -293,9 +293,15 @@ function startSessionWatchdog() {
         for (const [name, client] of clients.entries()) {
             try {
                 const status = connectionStatuses.get(name);
-                if (status === 'disconnected' || status === 'closed') {
-                    console.log(`[WATCHDOG] Session ${name} is ${status}. Attempting restart.`);
+                const restartableStates = [
+                    'disconnected', 'closed', 'browserclose', 'failed', 
+                    'qrreaderror', 'autoclose', 'offline', 'error'
+                ];
+
+                if (restartableStates.includes(status)) {
+                    console.log(`[WATCHDOG] Session ${name} is in state: ${status}. Attempting recovery restart.`);
                     clients.delete(name);
+                    qrCodes.delete(name);
                     initWhatsApp(name);
                 }
             } catch (e) {
@@ -534,19 +540,25 @@ app.post('/logout/:session', async (req, res) => {
     
     if (client) {
         try {
-            await client.logout();
+            // Tenta logout mas não trava se o browser já estiver morto
+            await Promise.race([
+                client.logout(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Logout timeout')), 5000))
+            ]).catch(e => console.warn(`[${session}] Logout promise failed (expected if browser is dead):`, e.message));
+            
+            console.log(`[${session}] Session cleanup initiated`);
+        } catch (e) {
+            console.error(`[${session}] Logout error details:`, e.message);
+        } finally {
+            // SEMPRE limpa do mapa local, independente de sucesso no logout remoto
             clients.delete(session);
             qrCodes.delete(session);
             connectionStatuses.set(session, 'disconnected');
-            console.log(`[${session}] Logged out successfully`);
             res.json({ status: 'logged_out', session });
-        } catch (e) {
-            console.error(`[${session}] Logout error:`, e.message);
-            res.status(500).json({ error: e.message, session });
         }
     } else {
-        // Se não tem cliente ativo, mas queremos garantir que o status seja resetado
         connectionStatuses.set(session, 'disconnected');
+        qrCodes.delete(session);
         res.json({ status: 'not_connected', session });
     }
 });
