@@ -16,22 +16,19 @@ const QUEUE_MAX_SIZE       = parseInt(process.env.QUEUE_MAX_SIZE       || '10000
 const RATE_LIMIT_MAX       = parseInt(process.env.RATE_LIMIT_MAX       || '20');    // relaxed for pro use
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000'); // 1 min window
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SCHEDULE CHECK (Brazil Timezone)
-// ─────────────────────────────────────────────────────────────────────────────
 function isBusinessHours() {
-    // Get current time in Brazil (Sao Paulo)
-    const brTimeStr = new Date().toLocaleString("en-US", {timeZone: "America/Sao_Paulo"});
-    const brTime = new Date(brTimeStr);
-    
-    const day = brTime.getDay(); // 0 (Sun) to 6 (Sat)
-    const hour = brTime.getHours();
+    try {
+        const brTime = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
+        const day = brTime.getDay(); // 0 (Dom) a 6 (Sab)
+        const hour = brTime.getHours();
 
-    // Seg-Sex, 08h às 18h
-    if (day === 0 || day === 6) return false;
-    if (hour < 8 || hour >= 18) return false;
-    
-    return true;
+        if (day === 0 || day === 6) return false;
+        if (hour < 8 || hour >= 18) return false;
+        return true;
+    } catch (e) {
+        console.error('[SCHEDULE] Error checking business hours:', e.message);
+        return true; // Fallback
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -219,7 +216,16 @@ async function initWhatsApp(sessionName) {
                     '--disable-sync',
                     '--metrics-recording-only',
                     '--proxy-server="direct://"',
-                    '--proxy-bypass-list=*'
+                    '--proxy-bypass-list=*',
+                    '--no-zygote',
+                    '--mute-audio',
+                    '--disable-background-timer-throttling',
+                    '--disable-backgrounding-occluded-windows',
+                    '--disable-breakpad',
+                    '--disable-component-update',
+                    '--disable-domain-reliability',
+                    '--disable-translate',
+                    '--hide-scrollbars'
                 ]
             },
             autoClose: false
@@ -356,19 +362,46 @@ async function startWorker(sessionName) {
                     }
                 } catch (checkErr) {
                     console.log(`[WORKER] [${sessionName}] checkNumberStatus falhou para ${to}: ${checkErr.message || checkErr}`);
-                    if (checkErr.message === "O destinatário não possui WhatsApp cadastrado.") {
-                        throw checkErr;
+                }
+
+                let mediaPath = message.media;
+                let isTempFile = false;
+
+                // Se for Base64, salva temporariamente para não estourar a RAM do Puppeteer
+                if (typeof message.media === 'string' && message.media.startsWith('data:')) {
+                    try {
+                        const matches = message.media.match(/^data:([A-Za-z-+\/]+);base64,([\s\S]+)$/);
+                        if (matches && matches.length === 3) {
+                            const buffer = Buffer.from(matches[2].replace(/\s/g, ''), 'base64');
+                            const tempDir = path.join(__dirname, 'temp_media');
+                            if (!fs.existsSync(tempDir)) {
+                                try { fs.mkdirSync(tempDir, { recursive: true }); } catch (e) {}
+                            }
+                            
+                            const ext = matches[1].split('/')[1] || 'bin';
+                            mediaPath = path.join(tempDir, `temp_${Date.now()}_${sessionName}.${ext}`);
+                            fs.writeFileSync(mediaPath, buffer);
+                            isTempFile = true;
+                            console.log(`[WORKER] [${sessionName}] Base64 saved to temp file: ${mediaPath}`);
+                        }
+                    } catch (base64Err) {
+                        console.error(`[WORKER] [${sessionName}] Error handling base64:`, base64Err.message);
                     }
                 }
 
-                const sendOp = message.media
-                    ? client.sendFile(to, message.media, 'file', message.message)
+                const sendOp = mediaPath
+                    ? client.sendFile(to, mediaPath, 'file', message.message)
                     : client.sendText(to, message.message);
 
                 await Promise.race([
                     sendOp,
                     new Promise((_, reject) => setTimeout(() => reject(new Error('Send timeout')), 60000))
                 ]);
+
+                // Limpeza imediata de arquivo temporário
+                if (isTempFile && fs.existsSync(mediaPath)) {
+                    try { fs.unlinkSync(mediaPath); } catch (e) {}
+                }
 
                 await notifyLaravel(message.log_id, 'sent');
             } catch (error) {
@@ -394,12 +427,12 @@ async function startWorker(sessionName) {
                 }
             }
 
-            // Cooldown per-session: 30 seconds (safety first)
-            const nextSend = Math.floor(Date.now() / 1000) + 30;
+            // Cooldown per-session: 15 seconds (safe & reliable)
+            const nextSend = Math.floor(Date.now() / 1000) + 15;
             await redis.set(`wpp_worker:next_send:${sessionName}`, nextSend, 'EX', 60);
             
-            console.log(`[WORKER] [${sessionName}] Waiting 30s before next message... (Next at: ${nextSend})`);
-            await new Promise(resolve => setTimeout(resolve, 30000));
+            console.log(`[WORKER] [${sessionName}] Waiting 15s before next message... (Next at: ${nextSend})`);
+            await new Promise(resolve => setTimeout(resolve, 15000));
 
         } catch (e) {
             console.error(`[WORKER] [${sessionName}] Loop error:`, e.message);
