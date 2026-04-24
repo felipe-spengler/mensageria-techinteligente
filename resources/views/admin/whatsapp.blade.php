@@ -173,7 +173,7 @@
                         
                         // Mapeamento amigável de status para a UI
                         let newStatus = (data.status || 'OFFLINE').toUpperCase();
-                        const successStates = ['CONNECTED', 'ISLOGGED', 'LOGGED', 'AUTHENTICATED', 'SYNCING'];
+                        const successStates = ['CONNECTED', 'ISLOGGED', 'LOGGED', 'AUTHENTICATED', 'SYNCING', 'INCHAT'];
                         
                         if (successStates.includes(newStatus)) {
                             this.status = 'CONNECTED';

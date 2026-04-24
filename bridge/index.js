@@ -176,8 +176,12 @@ async function initWhatsApp(sessionName) {
                 let cleanStatus = status.toLowerCase();
                 
                 // Normalização: Se não está logado, para a UI é "pronto para scan"
-                if (cleanStatus === 'notlogged' || cleanStatus === 'desconnectedmobile') {
+                if (cleanStatus === 'notlogged' || cleanStatus === 'desconnectedmobile' || cleanStatus === 'desconnected' || cleanStatus === 'disconnected') {
                     cleanStatus = 'qr_ready';
+                }
+                
+                if (cleanStatus === 'inchat' || cleanStatus === 'islogged' || cleanStatus === 'authenticated') {
+                    cleanStatus = 'connected';
                 }
                 
                 connectionStatuses.set(sessionName, cleanStatus);
@@ -517,10 +521,10 @@ app.get('/status/:session', (req, res) => {
     const session = req.params.session;
     let status = (connectionStatuses.get(session) || 'offline').toString().toLowerCase();
 
-    if (['islogged', 'logged', 'authenticated', 'main', 'syncing'].includes(status)) {
+    if (['islogged', 'logged', 'authenticated', 'main', 'syncing', 'inchat'].includes(status)) {
         status = 'connected';
     }
-    if (status.includes('qr')) {
+    if (status.includes('qr') || status.includes('notlogged')) {
         status = 'qr_ready';
     }
 
