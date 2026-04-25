@@ -46,9 +46,9 @@ class RecoverMessages extends Command
                           $q->where('status', 'failed')
                             ->where(function($sq) {
                                 // Tentamos re-processar erros que parecem ser do servidor/instabilidades
-                                $sq->where('reason', 'like', '%timeout%')
-                                  ->orWhere('reason', 'like', '%Connection%')
-                                  ->orWhere('reason', 'like', '%refused%');
+                                $sq->where('error_message', 'like', '%timeout%')
+                                  ->orWhere('error_message', 'like', '%Connection%')
+                                  ->orWhere('error_message', 'like', '%refused%');
                             })
                             ->where('updated_at', '>', now()->subHours(1)); // Somente falhas recentes
                       });
@@ -87,7 +87,7 @@ class RecoverMessages extends Command
 
                 // Se era uma falha anterior, volta o status para queued no banco
                 if ($log->status === 'failed') {
-                    $log->update(['status' => 'queued', 'reason' => 'Retrying after system failure alert']);
+                    $log->update(['status' => 'queued', 'error_message' => 'Retrying after system failure alert']);
                 }
 
                 // Logamos no Laravel também para fins de auditoria

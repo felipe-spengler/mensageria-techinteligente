@@ -81,6 +81,17 @@ class DefaultDataSeeder extends Seeder
             ]
         );
 
+        // Create User 3 (Client 3)
+        $user3 = \App\Models\User::updateOrCreate(
+            ['email' => 'thnardi@gmail.com'],
+            [
+                'name' => '45999144796',
+                'password' => '$2y$12$zPXGdtPLex8pBmyhTwY9xeyiWO7HI1mHcZMfT4.if.ruFP2HnL9fa', // Use the existing hash
+                'is_admin' => false,
+                'phone' => '45999144796'
+            ]
+        );
+
         foreach ($plans as $planData) {
             $plan = Plan::updateOrCreate(['name' => $planData['name']], $planData);
 
@@ -92,6 +103,18 @@ class DefaultDataSeeder extends Seeder
                         'plan_id' => $plan->id,
                         'status' => 'active',
                         'expires_at' => now()->addYears(1),
+                    ]
+                );
+            }
+
+            if ($plan->name === 'Business (Texto)' && isset($user3)) {
+                \App\Models\ApiKey::updateOrCreate(
+                    ['key' => 'sk_MOBxYdPGiNSUlNo1QbPG4juc5umUUUsA'],
+                    [
+                        'user_id' => $user3->id,
+                        'plan_id' => $plan->id,
+                        'status' => 'active',
+                        'expires_at' => now()->addMonth(1),
                     ]
                 );
             }

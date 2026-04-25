@@ -26,4 +26,7 @@ Thumbs.db
 # Recibos e Segurança
 recibo_techinteligente.html
 vps_key.pem
+vps_key_new.pem
+vps_key_production.pem
+mcp-vps/
 *.png

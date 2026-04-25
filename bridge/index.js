@@ -114,6 +114,7 @@ const redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
 const clients = new Map();
 const qrCodes = new Map();
 const connectionStatuses = new Map();
+const sessionsStarting = new Set(); // Track sessions currently initializing
 let isShuttingDown = false;
 let isInitializingGlobal = false;
 
@@ -126,9 +127,13 @@ async function initWhatsApp(sessionName) {
         return;
     }
 
+    if (sessionsStarting.has(sessionName)) {
+        console.log(`[BOOT] [${sessionName}] Already initializing, skipping duplicate call.`);
+        return;
+    }
+
     // Global Lock: Evita que múltiplos Chromiums iniciem simultaneamente,
     // o que causa picos de CPU e falhas no handshake do QR Code.
-    // Reduzido o intervalo de espera de 5s para 1s para maior agilidade.
     while (isInitializingGlobal) {
         console.log(`[BOOT] [${sessionName}] Another session is initializing, waiting...`);
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -136,6 +141,7 @@ async function initWhatsApp(sessionName) {
 
     let lockTimer;
     try {
+        sessionsStarting.add(sessionName);
         isInitializingGlobal = true;
         
         // Timer de segurança para liberar o lock se o wppconnect demorar demais (ex: esperando scan)
@@ -240,6 +246,7 @@ async function initWhatsApp(sessionName) {
         // LIBERA O LOCK AGORA: O navegador já abriu, a CPU já "respirou".
         // O restante (esperar scan) não consome CPU pesada.
         isInitializingGlobal = false;
+        sessionsStarting.delete(sessionName);
         if (typeof lockTimer !== 'undefined') clearTimeout(lockTimer);
 
         clients.set(sessionName, client);
@@ -251,6 +258,7 @@ async function initWhatsApp(sessionName) {
         
         // Se deu erro, precisamos garantir que o lock foi liberado
         isInitializingGlobal = false;
+        sessionsStarting.delete(sessionName);
         if (typeof lockTimer !== 'undefined') clearTimeout(lockTimer);
 
         // Retry logic for stability: try again in 30s once
