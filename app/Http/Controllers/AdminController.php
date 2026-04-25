@@ -171,6 +171,39 @@ class AdminController extends Controller
             ['session_name' => 'client_' . $user->id, 'status' => 'disconnected']
         );
 
+        // --- SINCRONIZAÇÃO EM TEMPO REAL ---
+        // Sempre que abrir a página, pergunta para a Bridge o status real
+        // para evitar que o banco de dados "minta" que está conectado.
+        try {
+            $bridgeUrl = env('WPP_BRIDGE_URL', 'http://bridge:3000');
+            $response = \Illuminate\Support\Facades\Http::timeout(3)->get("{$bridgeUrl}/status/{$instance->session_name}");
+            
+            if ($response->successful()) {
+                $bridgeStatus = strtolower($response->json()['status'] ?? 'offline');
+                
+                // Mapeia o status da bridge para o nosso banco
+                $newStatus = 'disconnected';
+                if (in_array($bridgeStatus, ['connected', 'islogged', 'authenticated', 'inchat'])) {
+                    $newStatus = 'connected';
+                } elseif (str_contains($bridgeStatus, 'qr')) {
+                    $newStatus = 'qr_ready';
+                }
+
+                if ($instance->status !== $newStatus) {
+                    $instance->update(['status' => $newStatus]);
+                }
+            } else {
+                // Se a bridge não conhece a sessão, garantimos que não apareça "conectado"
+                if ($instance->status === 'connected') {
+                    $instance->update(['status' => 'disconnected']);
+                }
+            }
+        } catch (\Exception $e) {
+            // Se não conseguir falar com a bridge, não mudamos nada para evitar falso negativo
+            // mas logamos o erro para debug
+            \Illuminate\Support\Facades\Log::warning("Falha ao sincronizar status da bridge: " . $e->getMessage());
+        }
+
         return view('admin.whatsapp', compact('instance'));
     }
 
