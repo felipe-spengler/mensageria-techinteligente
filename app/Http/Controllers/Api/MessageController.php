@@ -42,7 +42,7 @@ class MessageController extends Controller
             // 0. Check Schedule
             $instance = \App\Models\WhatsappInstance::where('user_id', $apiKey->user_id)->first();
             if ($instance && $instance->schedule_type === 'business_hours') {
-                $now = now();
+                $now = now()->setTimezone('America/Sao_Paulo');
                 $hour = $now->hour;
                 $day = $now->dayOfWeek; // 0 (Sun) to 6 (Sat)
                 

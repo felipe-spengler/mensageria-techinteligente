@@ -45,15 +45,14 @@ class RecoverMessages extends Command
                       ->orWhere(function($q) {
                           $q->where('status', 'failed')
                             ->where(function($sq) {
-                                // Tentamos re-processar erros que parecem ser do servidor/instabilidades
                                 $sq->where('error_message', 'like', '%timeout%')
                                   ->orWhere('error_message', 'like', '%Connection%')
                                   ->orWhere('error_message', 'like', '%refused%');
                             })
-                            ->where('updated_at', '>', now()->subHours(1)); // Somente falhas recentes
+                            ->where('updated_at', '>', now('UTC')->subHours(1)); // Usamos UTC para bater com o banco
                       });
             })
-            ->where('created_at', '<', now()->subMinutes(10))
+            ->where('created_at', '<', now('UTC')->subMinutes(5))
             ->get();
 
         if ($stuckMessages->isEmpty()) {
