@@ -33,6 +33,9 @@ class WebhookController extends Controller
             'sent_at' => $request->status === 'sent' ? now() : null,
         ]);
 
+        // --- NOTIFICAÇÃO DO CLIENTE (WEBHOOK CUSTOMIZADO) ---
+        $this->notifyClientWebhook($log);
+
         // If it failed, notify the user via Admin WhatsApp
         if ($request->status === 'failed' && $oldStatus !== 'failed') {
             $this->notifyUserOfFailure($log);
@@ -67,6 +70,38 @@ class WebhookController extends Controller
             ]));
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Failure notification failed: ' . $e->getMessage());
+        }
+    }
+
+    private function notifyClientWebhook($log)
+    {
+        try {
+            // Busca o usuário dono da API Key
+            $user = $log->apiKey->user;
+
+            if ($user && $user->webhook_url) {
+                // Busca a instância para saber a sessão (opcional, para informação)
+                $instance = \App\Models\WhatsappInstance::where('user_id', $user->id)->first();
+
+                \Illuminate\Support\Facades\Http::timeout(5)
+                    ->withoutVerifying()
+                    ->post($user->webhook_url, [
+                        'event' => 'message.status',
+                        'data' => [
+                            'id' => $log->id,
+                            'to' => $log->to,
+                            'status' => $log->status,
+                            'error' => $log->error_message,
+                            'sent_at' => $log->sent_at,
+                            'message' => $log->message,
+                            'session' => $instance->session_name ?? 'unknown'
+                        ]
+                    ]);
+                
+                \Illuminate\Support\Facades\Log::info("Webhook enviado para {$user->webhook_url} (Log ID: {$log->id})");
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Falha ao enviar webhook do cliente: " . $e->getMessage());
         }
     }
 

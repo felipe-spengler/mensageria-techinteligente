@@ -51,7 +51,24 @@
                             <span class="text-sm text-gray-400 group-hover:text-white transition-colors">Horário Comercial (Seg-Sex, 08h-18h)</span>
                         </label>
                     </div>
-                    <p class="text-[10px] text-gray-500 italic mt-2">Evita incomodar clientes em horários inapropriados.</p>
+                </form>
+            </div>
+
+            <!-- Webhook Card -->
+            <div class="glass rounded-3xl p-6 border-dash-700 shadow-xl md:col-span-2">
+                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Webhooks de Integração (API)</h4>
+                <form action="{{ route('admin.whatsapp.webhook') }}" method="POST" class="space-y-4">
+                    @csrf
+                    <div class="flex flex-col space-y-2">
+                        <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">URL de Notificação</label>
+                        <div class="flex items-center space-x-3">
+                            <input type="url" name="webhook_url" value="{{ Auth::user()->webhook_url }}" placeholder="https://seu-sistema.com/webhook-whatsapp" class="flex-1 bg-black/20 p-4 rounded-2xl border border-white/5 text-sm text-blue-400 font-mono focus:outline-none focus:border-blue-500/50 transition-all">
+                            <button type="submit" class="px-6 py-4 bg-blue-600 hover:bg-blue-700 rounded-2xl text-[10px] font-bold text-white uppercase tracking-widest transition-all">
+                                Salvar
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-gray-500 italic mt-2">Enviaremos um POST para esta URL sempre que uma mensagem mudar de status (sent/failed).</p>
+                    </div>
                 </form>
             </div>
         </div>

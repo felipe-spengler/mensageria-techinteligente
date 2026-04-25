@@ -47,9 +47,23 @@ class MessageController extends Controller
                 $day = $now->dayOfWeek; // 0 (Sun) to 6 (Sat)
                 
                 if ($day === 0 || $day === 6 || $hour < 8 || $hour >= 18) {
+                    // Se estiver fora do horário, apenas criamos o log como 'queued' 
+                    // mas NÃO chamamos o pushToQueue() agora. 
+                    // O RecoverMessages vai notar que ela está na fila e disparar quando der 08:00.
+                    $log = MessageLog::create([
+                        'api_key_id' => $apiKey->id,
+                        'to' => $to,
+                        'message' => $request->message,
+                        'media_url' => $request->media,
+                        'status' => 'queued',
+                    ]);
+
                     return response()->json([
-                        'error' => 'Fora do horário comercial. Sua instância está configurada para enviar apenas de Seg-Sex das 08h às 18h.',
-                    ], 403);
+                        'success' => true,
+                        'message' => 'Mensagem agendada! Como sua instância está fora do horário comercial, ela será enviada automaticamente a partir das 08:00.',
+                        'log_id' => $log->id,
+                        'status' => 'scheduled'
+                    ]);
                 }
             }
 

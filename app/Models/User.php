@@ -31,6 +31,7 @@ class User extends Authenticatable implements FilamentUser
         'phone',
         'password',
         'is_admin',
+        'webhook_url',
     ];
 
     public function getWppPhoneAttribute()
