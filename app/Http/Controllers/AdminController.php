@@ -449,6 +449,45 @@ class AdminController extends Controller
         return back()->with('success', 'Mensagem removida dos relatórios.');
     }
 
+    public function retry(MessageLog $log)
+    {
+        // Segurança: Apenas o dono ou admin pode reenviar
+        if (!Auth::user()->isAdmin() && $log->apiKey->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $user = Auth::user();
+        $instance = \App\Models\WhatsappInstance::where('user_id', $user->id)->first();
+
+        if (!$instance || !in_array(strtoupper($instance->status), ['CONNECTED', 'ISLOGGED', 'AUTHENTICATED', 'LOGGED', 'SYNCING'])) {
+            return back()->with('error', 'Você precisa estar com o WhatsApp conectado para reenviar mensagens.');
+        }
+
+        // Volta o status para fila e limpa erros anteriores
+        $log->update([
+            'status' => 'queued',
+            'error_message' => null,
+            'created_at' => now() // Atualiza para o topo da fila
+        ]);
+
+        // Empurra para o Redis
+        try {
+            $redis = \Illuminate\Support\Facades\Redis::connection();
+            $redis->rpush('wpp_messages:' . $instance->session_name, json_encode([
+                'log_id' => $log->id,
+                'to' => $log->to,
+                'message' => $log->message,
+                'media' => $log->media_url,
+                'session' => $instance->session_name,
+                'schedule_type' => $instance->schedule_type ?? 'full_time'
+            ]));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Erro ao reenviar via Redis: ' . $e->getMessage());
+        }
+
+        return back()->with('success', 'Mensagem enviada para a fila de reenvio!');
+    }
+
     public function clearQueue(Request $request)
     {
         if (!Auth::user()->isAdmin()) {

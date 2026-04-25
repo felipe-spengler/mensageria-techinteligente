@@ -172,6 +172,15 @@
                                     </td>
                                     <td class="px-8 py-6 text-right">
                                         <div class="flex items-center justify-end space-x-2">
+                                            @if($log->status === 'failed')
+                                                <form action="{{ route('admin.logs.retry', $log->id) }}" method="POST">
+                                                    @csrf
+                                                    <button type="submit" class="p-2 text-amber-500 hover:text-white hover:bg-amber-500/20 rounded-xl transition" title="Tentar Reenviar">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                                    </button>
+                                                </form>
+                                            @endif
+                                            
                                             <form action="{{ route('admin.logs.destroy', $log->id) }}" method="POST" onsubmit="return confirm('Excluir este registro?')">
                                                 @csrf
                                                 @method('DELETE')

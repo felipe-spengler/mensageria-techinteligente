@@ -34,6 +34,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/admin/api-keys/{apiKey}', [\App\Http\Controllers\AdminController::class, 'destroyApiKey'])->name('admin.api_keys.destroy');
 
         // Logs Control
+        Route::post('/admin/logs/retry/{log}', [\App\Http\Controllers\AdminController::class, 'retry'])->name('admin.logs.retry');
         Route::delete('/admin/logs/{log}', [\App\Http\Controllers\AdminController::class, 'destroyLog'])->name('admin.logs.destroy');
         Route::post('/admin/logs/clear', [\App\Http\Controllers\AdminController::class, 'clearQueue'])->name('admin.logs.clear');
     });
