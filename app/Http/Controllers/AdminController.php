@@ -516,18 +516,6 @@ class AdminController extends Controller
         return back()->with('success', 'Fila de envios limpa com sucesso em todo o sistema!');
     }
 
-    public function updateSchedule(Request $request)
-    {
-        $request->validate([
-            'schedule_type' => 'required|in:full_time,business_hours'
-        ]);
-
-        \App\Models\WhatsappInstance::where('user_id', Auth::id())
-            ->update(['schedule_type' => $request->schedule_type]);
-
-        return back()->with('success', 'Horário de envio atualizado!');
-    }
-
     public function updateWebhook(Request $request)
     {
         $request->validate([
