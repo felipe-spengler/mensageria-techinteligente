@@ -168,20 +168,20 @@
                                         <div class="flex flex-col space-y-1">
                                             <div class="flex items-center justify-center space-x-2">
                                                 <span class="text-[9px] font-bold text-gray-600 uppercase tracking-tighter">Início:</span>
-                                                <span class="text-xs font-bold text-gray-400">{{ $log->created_at->format('H:i:s') }}</span>
+                                                <span class="text-xs font-bold text-gray-400">{{ $log->created_at->setTimezone('America/Sao_Paulo')->format('H:i:s') }}</span>
                                             </div>
                                             @if($log->sent_at)
                                                 <div class="flex items-center justify-center space-x-2">
                                                     <span class="text-[9px] font-bold text-emerald-600/50 uppercase tracking-tighter">Envio:</span>
-                                                    <span class="text-xs font-bold text-emerald-500/80">{{ $log->sent_at->format('H:i:s') }}</span>
+                                                    <span class="text-xs font-bold text-emerald-500/80">{{ $log->sent_at->setTimezone('America/Sao_Paulo')->format('H:i:s') }}</span>
                                                 </div>
                                             @elseif($log->status === 'failed')
                                                 <div class="flex items-center justify-center space-x-2">
                                                     <span class="text-[9px] font-bold text-red-600/50 uppercase tracking-tighter">Falha:</span>
-                                                    <span class="text-xs font-bold text-red-500/80">{{ $log->updated_at->format('H:i:s') }}</span>
+                                                    <span class="text-xs font-bold text-red-500/80">{{ $log->updated_at->setTimezone('America/Sao_Paulo')->format('H:i:s') }}</span>
                                                 </div>
                                             @endif
-                                            <span class="text-[9px] text-gray-700 font-mono mt-1">{{ $log->created_at->format('d/m/Y') }}</span>
+                                            <span class="text-[9px] text-gray-700 font-mono mt-1">{{ $log->created_at->setTimezone('America/Sao_Paulo')->format('d/m/Y') }}</span>
                                         </div>
                                     </td>
                                     <td class="px-8 py-6 text-right">
