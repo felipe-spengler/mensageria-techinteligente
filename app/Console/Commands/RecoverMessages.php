@@ -63,15 +63,19 @@ class RecoverMessages extends Command
 
         foreach ($stuckMessages as $log) {
             try {
-                $session = 'mensageria-tech';
+                $session = null;
                 
                 // Tenta encontrar a instância do usuário para saber qual fila usar
-                // Adicionada verificação de segurança na relação apiKey
                 if ($log->apiKey && $log->apiKey->user_id) {
                     $instance = WhatsappInstance::where('user_id', $log->apiKey->user_id)->first();
                     if ($instance) {
                         $session = $instance->session_name;
                     }
+                }
+
+                if (!$session) {
+                    $this->warn("Ignorando ID {$log->id}: Instância de WhatsApp não encontrada para o usuário.");
+                    continue;
                 }
 
                 $this->line("Re-enviando ID {$log->id} para a fila: {$session}");
@@ -137,11 +141,20 @@ class RecoverMessages extends Command
                 $redisTo = '55' . $redisTo;
             }
 
-            Redis::rpush('wpp_messages:mensageria-tech', json_encode([
+            // Busca a instância do admin (ID 1) para enviar notificações do sistema
+            $adminInstance = WhatsappInstance::where('user_id', 1)->first();
+            $session = $adminInstance ? $adminInstance->session_name : null;
+
+            if (!$session) {
+                Log::error('Expiry Notification Error: Nenhuma instância administrativa (User 1) encontrada.');
+                return;
+            }
+
+            Redis::rpush('wpp_messages:' . $session, json_encode([
                 'to' => $redisTo,
                 'message' => $message,
                 'is_system_notification' => true,
-                'session' => 'mensageria-tech'
+                'session' => $session
             ]));
         } catch (\Exception $e) {
             Log::error('Expiry Notification Redis Error: ' . $e->getMessage());

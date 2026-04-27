@@ -309,13 +309,18 @@ class ManualSendController extends Controller
             $to = $log->to;
             
             // Determine session
-            $session = 'mensageria-tech'; // fallback
+            $session = null;
             if ($log->apiKey && $log->apiKey->user) {
                 $instance = \App\Models\WhatsappInstance::where('user_id', $log->apiKey->user_id)->first();
                 if ($instance) $session = $instance->session_name;
             } elseif ($log->user_id) {
                 $instance = \App\Models\WhatsappInstance::where('user_id', $log->user_id)->first();
                 if ($instance) $session = $instance->session_name;
+            }
+
+            if (!$session) {
+                Log::error('Manual Send Error: Nenhuma instância de WhatsApp encontrada para o envio.');
+                return false;
             }
 
             $redis = \Illuminate\Support\Facades\Redis::connection();

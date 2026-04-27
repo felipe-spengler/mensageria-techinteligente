@@ -62,11 +62,20 @@ class WebhookController extends Controller
         $message = "❌ *Erro de Entrega TechInteligente*\n\nIdentificamos uma falha ao enviar sua mensagem para: *{$log->to}*.\n\n*Erro:* {$log->error_message}\n\n_Verifique se seu dispositivo está conectado e se o número de destino é válido._";
 
         try {
+            // Busca a instância do admin (ID 1) para enviar notificações do sistema
+            $adminInstance = \App\Models\WhatsappInstance::where('user_id', 1)->first();
+            $session = $adminInstance ? $adminInstance->session_name : null;
+
+            if (!$session) {
+                \Illuminate\Support\Facades\Log::error('Failure Notification Error: Nenhuma instância administrativa (User 1) encontrada.');
+                return;
+            }
+
             $redis = \Illuminate\Support\Facades\Redis::connection();
-            $redis->rpush('wpp_messages:mensageria-tech', json_encode([
+            $redis->rpush('wpp_messages:' . $session, json_encode([
                 'to' => $dest,
                 'message' => $message,
-                'session' => 'mensageria-tech', // Admin session
+                'session' => $session,
             ]));
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Failure notification failed: ' . $e->getMessage());

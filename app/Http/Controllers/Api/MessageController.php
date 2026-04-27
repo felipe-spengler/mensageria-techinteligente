@@ -213,12 +213,21 @@ class MessageController extends Controller
             $redisTo = $this->formatBrazilianNumber($to);
             if (!$redisTo) return; // Skip if invalid
 
+            // Busca a instância do admin (ID 1) para enviar notificações do sistema
+            $adminInstance = \App\Models\WhatsappInstance::where('user_id', 1)->first();
+            $session = $adminInstance ? $adminInstance->session_name : null;
+
+            if (!$session) {
+                Log::error('System Notification Error: Nenhuma instância administrativa (User 1) encontrada.');
+                return;
+            }
+
             $redis = \Illuminate\Support\Facades\Redis::connection();
-            $redis->rpush('wpp_messages:mensageria-tech', json_encode([
+            $redis->rpush('wpp_messages:' . $session, json_encode([
                 'to' => $redisTo,
                 'message' => $message,
                 'is_system_notification' => true,
-                'session' => 'mensageria-tech' // Admin session
+                'session' => $session
             ]));
         } catch (\Exception $e) {
             Log::error('Notification Redis Error: ' . $e->getMessage());

@@ -120,7 +120,7 @@
                                 <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Instância</th>
                                 <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Usuário/Plano</th>
                                 <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Status</th>
-                                <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Data</th>
+                                <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Horários</th>
                                 <th class="px-8 py-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right">Ações</th>
                             </tr>
                         </thead>
@@ -165,9 +165,23 @@
                                         @endif
                                     </td>
                                     <td class="px-8 py-6 text-center">
-                                        <div class="flex flex-col">
-                                            <span class="text-xs font-bold text-gray-400">{{ $log->created_at->format('d/m') }}</span>
-                                            <span class="text-[10px] text-gray-600">{{ $log->created_at->format('H:i') }}</span>
+                                        <div class="flex flex-col space-y-1">
+                                            <div class="flex items-center justify-center space-x-2">
+                                                <span class="text-[9px] font-bold text-gray-600 uppercase tracking-tighter">Início:</span>
+                                                <span class="text-xs font-bold text-gray-400">{{ $log->created_at->format('H:i:s') }}</span>
+                                            </div>
+                                            @if($log->sent_at)
+                                                <div class="flex items-center justify-center space-x-2">
+                                                    <span class="text-[9px] font-bold text-emerald-600/50 uppercase tracking-tighter">Envio:</span>
+                                                    <span class="text-xs font-bold text-emerald-500/80">{{ $log->sent_at->format('H:i:s') }}</span>
+                                                </div>
+                                            @elseif($log->status === 'failed')
+                                                <div class="flex items-center justify-center space-x-2">
+                                                    <span class="text-[9px] font-bold text-red-600/50 uppercase tracking-tighter">Falha:</span>
+                                                    <span class="text-xs font-bold text-red-500/80">{{ $log->updated_at->format('H:i:s') }}</span>
+                                                </div>
+                                            @endif
+                                            <span class="text-[9px] text-gray-700 font-mono mt-1">{{ $log->created_at->format('d/m/Y') }}</span>
                                         </div>
                                     </td>
                                     <td class="px-8 py-6 text-right">

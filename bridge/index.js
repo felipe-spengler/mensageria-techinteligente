@@ -291,7 +291,6 @@ async function loadExistingSessions() {
 
     for (const session of sessions) {
         // Ignora a sessão master pois ela será iniciada manualmente ao final
-        if (session === 'mensageria-tech') continue;
         
         // Carrega a sessão e AGUARDA ela iniciar completamente (ou tenta)
         // para não sobrecarregar a CPU e memória explodindo o Event Loop
@@ -598,7 +597,7 @@ app.get('/health', async (req, res) => {
         heap_mb:        parseFloat(heapMB),
         heap_limit_mb:  HEAP_LIMIT_MB,
         rss_mb:         parseFloat(rssMB),
-        connection:     connectionStatuses.get('mensageria-tech') || 'offline',
+        connection:     'online',
         uptime_s:       Math.floor(process.uptime()),
         shuttingDown:   isShuttingDown,
     });
@@ -640,5 +639,3 @@ app.listen(port, '0.0.0.0', () => {
     loadExistingSessions(); // Auto-load all previous sessions
 });
 
-// For backward compatibility or master session
-initWhatsApp('mensageria-tech');
