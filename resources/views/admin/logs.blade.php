@@ -141,7 +141,7 @@
                                     <td class="px-8 py-6">
                                         <div class="flex flex-col">
                                             <span class="text-[10px] font-mono text-blue-400 uppercase tracking-tighter">
-                                                {{ $log->instance->session_name ?? 'mensageria-tech' }}
+                                                {{ $log->instance->session_name ?? 'Sem Instância' }}
                                             </span>
                                             <span class="text-[8px] text-gray-600 mt-0.5">Sessão WPP</span>
                                         </div>
