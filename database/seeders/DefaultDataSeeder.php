@@ -72,12 +72,11 @@ class DefaultDataSeeder extends Seeder
 
         // Create Admin User early so we can use it in API key seeding
         $adminUser = \App\Models\User::updateOrCreate(
-            ['email' => 'admin@techinteligente.site'],
+            ['email' => 'admin@admin.com'],
             [
-                'name' => 'Administrador',
-                'password' => \Illuminate\Support\Facades\Hash::make('teste123'),
+                'name' => 'Admin',
+                'password' => bcrypt('supersenha'),
                 'is_admin' => true,
-                'phone' => '5545999999999'
             ]
         );
 

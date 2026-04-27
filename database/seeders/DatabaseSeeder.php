@@ -16,14 +16,5 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(DefaultDataSeeder::class);
-        
-        User::updateOrCreate(
-            ['email' => 'admin@admin.com'],
-            [
-                'name' => 'Admin',
-                'password' => bcrypt('supersenha'),
-                'is_admin' => true,
-            ]
-        );
     }
 }

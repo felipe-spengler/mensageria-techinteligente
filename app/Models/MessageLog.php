@@ -33,4 +33,20 @@ class MessageLog extends Model
     {
         return $this->belongsTo(ApiKey::class);
     }
+
+    public function getInstanceAttribute()
+    {
+        $userId = null;
+        if ($this->api_key_id && $this->apiKey) {
+            $userId = $this->apiKey->user_id;
+        } elseif ($this->user_id) {
+            $userId = $this->user_id;
+        }
+
+        if ($userId) {
+            return \App\Models\WhatsappInstance::where('user_id', $userId)->first();
+        }
+
+        return null;
+    }
 }
