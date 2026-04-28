@@ -86,7 +86,8 @@ class RecoverMessages extends Command
 
                 // Verifica se a instância possui restrição de horário e se estamos fora dele
                 if (isset($instance) && $instance->schedule_type === 'business_hours' && !$isBusinessHours) {
-                    // Mantém na fila silenciosamente aguardando horário comercial
+                    // Toca o updated_at para que o agendador não a reprocesse enquanto aguarda o horário comercial
+                    $log->touch();
                     continue;
                 }
 
