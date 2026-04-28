@@ -33,9 +33,29 @@ class MessageController extends Controller
         }
         
         $request->merge(['to' => $to]); // Update request data
-
+        
         // Get API Key from Middleware
         $apiKey = $request->attributes->get('api_key');
+
+        // --- Intelligent Deduplication Layer (Anti-Flood) ---
+        // Prevents sending the exact same content to the same number within 24h
+        if (!$request->has('force') || !$request->force) {
+            $duplicate = MessageLog::where('api_key_id', $apiKey->id)
+                ->where('to', $to)
+                ->where('message', $request->message)
+                ->where('created_at', '>', now()->subHours(24))
+                ->whereIn('status', ['sent', 'queued'])
+                ->first();
+
+            if ($duplicate) {
+                return response()->json([
+                    'error' => 'Duplicate message detected.',
+                    'message' => 'Esta exata mensagem já foi enviada ou está na fila para este número nas últimas 24 horas. Para ignorar esta trava, envie o parâmetro "force": true na requisição.',
+                    'original_log_id' => $duplicate->id,
+                    'last_sent' => $duplicate->created_at->toDateTimeString()
+                ], 409);
+            }
+        }
 
         // Check plan limits (Usage in current month)
         if ($apiKey->plan) {
@@ -270,7 +290,8 @@ class MessageController extends Controller
                 'message' => $log->message,
                 'media' => $log->media_url,
                 'session' => $session,
-                'schedule_type' => $instance->schedule_type ?? 'full_time'
+                'schedule_type' => $instance->schedule_type ?? 'full_time',
+                'force' => request()->has('force') && request()->force
             ]));
         } catch (\Exception $e) {
             Log::error('Redis Error: ' . $e->getMessage());

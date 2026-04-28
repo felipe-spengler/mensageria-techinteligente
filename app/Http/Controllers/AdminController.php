@@ -104,50 +104,75 @@ class AdminController extends Controller
     public function logs(Request $request)
     {
         $user = Auth::user();
+
+        // --- Filtros ---
+        $filterStatus = $request->get('status');
+        $filterUser   = $request->get('user_id');
+        $filterDate   = $request->get('date');
+        $filterPhone  = $request->get('phone');
+
         $query = MessageLog::query()->with('apiKey.user')
-            ->when(!$user->isAdmin(), function($q) use ($user) {
-                $q->whereHas('apiKey', fn($aq) => $aq->where('user_id', $user->id));
-            });
+            ->when(!$user->isAdmin(), fn($q) => $q->whereHas('apiKey', fn($aq) => $aq->where('user_id', $user->id)))
+            ->when($user->isAdmin() && $filterUser, fn($q) => $q->whereHas('apiKey', fn($aq) => $aq->where('user_id', $filterUser)))
+            ->when($filterStatus, fn($q) => $q->where('status', $filterStatus))
+            ->when($filterDate,   fn($q) => $q->whereDate('created_at', $filterDate))
+            ->when($filterPhone,  fn($q) => $q->where('to', 'like', "%{$filterPhone}%"));
 
-        if ($request->has('status') && $request->status) {
-            $query->where('status', $request->status);
-        }
+        $logs = $query->latest()->paginate(20)->withQueryString();
 
-        $logs = $query->latest()->paginate(20);
-        
         // Pré-carrega as instâncias para evitar N+1 queries na view
-        $userIds = $logs->pluck('apiKey.user_id')->unique()->filter();
+        $userIds   = $logs->pluck('apiKey.user_id')->unique()->filter();
         $instances = \App\Models\WhatsappInstance::whereIn('user_id', $userIds)->get()->keyBy('user_id');
-        
-        $logs->getCollection()->each(function($log) use ($instances) {
-            $log->setRelation('instance', $instances->get($log->apiKey->user_id));
-        });
+        $logs->getCollection()->each(fn($log) => $log->setRelation('instance', $instances->get($log->apiKey->user_id)));
 
-        // Determinar o motivo de mensagens na fila
+        // Lista de usuários para o filtro do admin
+        $allUsers = $user->isAdmin() ? \App\Models\User::orderBy('name')->get(['id', 'name']) : collect();
+
+        // Estatísticas Globais
+        $baseStats = fn() => MessageLog::when(!$user->isAdmin(), fn($q) => $q->whereHas('apiKey', fn($aq) => $aq->where('user_id', $user->id)));
+        $stats = [
+            'total'  => ($baseStats)()->count(),
+            'sent'   => ($baseStats)()->where('status', 'sent')->count(),
+            'queued' => ($baseStats)()->where('status', 'queued')->count(),
+            'failed' => ($baseStats)()->where('status', 'failed')->count(),
+        ];
+        $queuedCount = $stats['queued'];
+
+        // Contagem real do Redis por sessão (para admin ver fila real vs banco)
+        $redisQueueCounts = [];
+        try {
+            $redisConn = \Illuminate\Support\Facades\Redis::connection();
+            $redisKeys = $redisConn->keys('wpp_messages:*');
+            foreach ($redisKeys as $rKey) {
+                $cleanKey = str_replace(config('database.redis.options.prefix', ''), '', $rKey);
+                $session  = str_replace('wpp_messages:', '', $cleanKey);
+                $redisQueueCounts[$session] = $redisConn->llen($cleanKey);
+            }
+        } catch (\Exception $e) {}
+
+        // Uso do Plano
+        $apiKey           = ApiKey::where('user_id', $user->id)->where('status', 'active')->with('plan')->first();
+        $planLimit        = $apiKey?->plan?->message_limit ?? 0;
+        $planUsage        = $apiKey ? MessageLog::where('api_key_id', $apiKey->id)->whereMonth('created_at', now()->month)->count() : 0;
+        $planUsagePercent = $planLimit > 0 ? min(100, round(($planUsage / $planLimit) * 100)) : 0;
+
+        // Estado da fila
         $queuedReason = null;
-        $nextSendIn = null;
-        $queuedCount = MessageLog::when(!$user->isAdmin(), fn($q) => $q->whereHas('apiKey', fn($aq) => $aq->where('user_id', $user->id)))
-            ->where('status', 'queued')->count();
+        $nextSendIn   = null;
 
         if ($queuedCount > 0) {
             $instance = \App\Models\WhatsappInstance::where('user_id', $user->id)->first();
             if ($instance) {
-                $status = strtoupper($instance->status ?? 'OFFLINE');
+                $status        = strtoupper($instance->status ?? 'OFFLINE');
                 $successStates = ['CONNECTED', 'ISLOGGED', 'AUTHENTICATED', 'LOGGED', 'SYNCING'];
-                
                 if (!in_array($status, $successStates)) {
                     $queuedReason = 'Aguardando conexão com WhatsApp';
                 } else {
-                    // Tenta buscar no Redis se há uma estimativa de próximo envio
                     try {
-                        $redis = \Illuminate\Support\Facades\Redis::connection();
-                        $nextSendTimestamp = $redis->get("wpp_worker:next_send:{$instance->session_name}");
-                        if ($nextSendTimestamp) {
-                            $nextSendIn = max(0, (int)$nextSendTimestamp - time());
-                            $queuedReason = "Processando fila. Próximo envio em {$nextSendIn}s";
-                        } else {
-                            $queuedReason = 'Aguardando processamento do Worker...';
-                        }
+                        $redisConn2        = \Illuminate\Support\Facades\Redis::connection();
+                        $nextSendTimestamp = $redisConn2->get("wpp_worker:next_send:{$instance->session_name}");
+                        $nextSendIn        = $nextSendTimestamp ? max(0, (int)$nextSendTimestamp - time()) : null;
+                        $queuedReason      = $nextSendIn ? "Processando fila. Próximo envio em {$nextSendIn}s" : 'Aguardando processamento do Worker...';
                     } catch (\Exception $e) {
                         $queuedReason = 'Processando fila (intervalo de 30s/msg)';
                     }
@@ -157,7 +182,12 @@ class AdminController extends Controller
             }
         }
 
-        return view('admin.logs', compact('logs', 'queuedReason', 'queuedCount', 'nextSendIn'));
+        return view('admin.logs', compact(
+            'logs', 'queuedReason', 'queuedCount', 'nextSendIn',
+            'stats', 'planLimit', 'planUsage', 'planUsagePercent', 'apiKey',
+            'allUsers', 'filterUser', 'filterStatus', 'filterDate', 'filterPhone',
+            'redisQueueCounts'
+        ));
     }
 
     /**

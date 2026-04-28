@@ -16,8 +16,8 @@
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div class="glass p-6 rounded-[32px] border-dash-700 relative overflow-hidden group">
                 <div class="relative z-10">
-                    <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Total Hoje</p>
-                    <h3 class="text-3xl font-black text-white">{{ $logs->total() }}</h3>
+                    <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Total</p>
+                    <h3 class="text-3xl font-black text-white">{{ $stats['total'] }}</h3>
                 </div>
                 <div class="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
                     <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -27,7 +27,7 @@
             <div class="glass p-6 rounded-[32px] border-dash-700 relative overflow-hidden group">
                 <div class="relative z-10">
                     <p class="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-1">Sucesso</p>
-                    <h3 class="text-3xl font-black text-white">{{ $logs->where('status', 'sent')->count() }}</h3>
+                    <h3 class="text-3xl font-black text-white">{{ $stats['sent'] }}</h3>
                 </div>
                 <div class="absolute -right-4 -bottom-4 opacity-5 text-emerald-500 group-hover:opacity-10 transition-opacity">
                     <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -38,7 +38,7 @@
                 <div class="relative z-10">
                     <p class="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-1">Na Fila</p>
                     <div class="flex items-baseline space-x-2">
-                        <h3 class="text-3xl font-black text-white">{{ $queuedCount }}</h3>
+                        <h3 class="text-3xl font-black text-white">{{ $stats['queued'] }}</h3>
                         <template x-if="timeLeft > 0">
                             <span class="text-xs font-bold text-amber-500/80 animate-pulse">(em <span x-text="timeLeft"></span>s)</span>
                         </template>
@@ -52,7 +52,7 @@
             <div class="glass p-6 rounded-[32px] border-dash-700 relative overflow-hidden group">
                 <div class="relative z-10">
                     <p class="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-1">Erros</p>
-                    <h3 class="text-3xl font-black text-white">{{ $logs->where('status', 'failed')->count() }}</h3>
+                    <h3 class="text-3xl font-black text-white">{{ $stats['failed'] }}</h3>
                 </div>
                 <div class="absolute -right-4 -bottom-4 opacity-5 text-red-500 group-hover:opacity-10 transition-opacity">
                     <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -60,33 +60,100 @@
             </div>
         </div>
         
-        <!-- Filter Bar -->
-        <div class="glass p-4 rounded-3xl border-dash-700 flex flex-wrap items-center gap-4">
-            <div class="flex items-center space-x-2 px-4 border-r border-white/5">
-                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Filtros</span>
+        @if(!auth()->user()->isAdmin() && isset($apiKey) && $planLimit > 0)
+        <!-- Usage Limit Bar -->
+        <div class="glass p-6 rounded-[32px] border-dash-700 relative overflow-hidden">
+            <div class="flex justify-between items-end mb-2">
+                <div>
+                    <h4 class="text-sm font-bold text-white mb-1">Uso do Plano Mensal ({{ $apiKey->plan->name ?? 'Plano' }})</h4>
+                    <p class="text-xs text-gray-500">Você já utilizou {{ $planUsage }} de {{ $planLimit }} mensagens este mês.</p>
+                </div>
+                <span class="text-xl font-black {{ $planUsagePercent >= 90 ? 'text-red-500' : ($planUsagePercent >= 75 ? 'text-amber-500' : 'text-emerald-500') }}">{{ $planUsagePercent }}%</span>
             </div>
-            
-            <a href="{{ route('admin.logs') }}" class="px-4 py-2 rounded-xl text-xs font-bold {{ !request('status') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-gray-500 hover:text-gray-300' }}">Todos</a>
-            <a href="{{ route('admin.logs', ['status' => 'sent']) }}" class="px-4 py-2 rounded-xl text-xs font-bold {{ request('status') === 'sent' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20' : 'text-gray-500 hover:text-gray-300' }}">Sucesso</a>
-            <a href="{{ route('admin.logs', ['status' => 'queued']) }}" class="px-4 py-2 rounded-xl text-xs font-bold {{ request('status') === 'queued' ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/20' : 'text-gray-500 hover:text-gray-300' }}">Na Fila</a>
-            <a href="{{ route('admin.logs', ['status' => 'failed']) }}" class="px-4 py-2 rounded-xl text-xs font-bold {{ request('status') === 'failed' ? 'bg-red-600 text-white shadow-lg shadow-red-900/20' : 'text-gray-500 hover:text-gray-300' }}">Erro</a>
+            <div class="w-full bg-dash-900 rounded-full h-2.5 mb-2 overflow-hidden border border-white/5">
+                <div class="{{ $planUsagePercent >= 90 ? 'bg-red-500' : ($planUsagePercent >= 75 ? 'bg-amber-500' : 'bg-emerald-500') }} h-2.5 rounded-full transition-all duration-1000" style="width: {{ $planUsagePercent }}%"></div>
+            </div>
+        </div>
+        @endif
 
-            @if(auth()->user()->isAdmin())
-                <div class="ml-auto flex items-center space-x-4">
-                    <button @click="window.location.reload()" class="p-2 text-gray-500 hover:text-white transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        {{-- Filter Bar --}}
+        <div class="glass p-4 rounded-3xl border-dash-700">
+            <form method="GET" action="{{ route('admin.logs') }}" class="flex flex-wrap items-end gap-3">
+
+                {{-- Status --}}
+                <div class="flex flex-col gap-1">
+                    <label class="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Status</label>
+                    <div class="flex items-center gap-2">
+                        <a href="{{ route('admin.logs', array_merge(request()->except('status','page'), [])) }}" class="px-3 py-1.5 rounded-xl text-xs font-bold {{ !$filterStatus ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-300' }}">Todos</a>
+                        <a href="{{ route('admin.logs', array_merge(request()->except('status','page'), ['status'=>'sent'])) }}" class="px-3 py-1.5 rounded-xl text-xs font-bold {{ $filterStatus==='sent' ? 'bg-emerald-600 text-white' : 'text-gray-500 hover:text-gray-300' }}">Sucesso</a>
+                        <a href="{{ route('admin.logs', array_merge(request()->except('status','page'), ['status'=>'queued'])) }}" class="px-3 py-1.5 rounded-xl text-xs font-bold {{ $filterStatus==='queued' ? 'bg-amber-600 text-white' : 'text-gray-500 hover:text-gray-300' }}">Na Fila</a>
+                        <a href="{{ route('admin.logs', array_merge(request()->except('status','page'), ['status'=>'failed'])) }}" class="px-3 py-1.5 rounded-xl text-xs font-bold {{ $filterStatus==='failed' ? 'bg-red-600 text-white' : 'text-gray-500 hover:text-gray-300' }}">Erro</a>
+                    </div>
+                </div>
+
+                <div class="w-px h-8 bg-white/5 self-end mb-1"></div>
+
+                {{-- Busca por telefone --}}
+                <div class="flex flex-col gap-1">
+                    <label class="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Número</label>
+                    <input type="text" name="phone" value="{{ $filterPhone }}" placeholder="Ex: 5545999..." class="bg-dash-900 border border-white/10 text-gray-300 text-xs rounded-xl px-3 py-1.5 w-44 focus:outline-none focus:border-blue-500/50" />
+                </div>
+
+                {{-- Filtro por data --}}
+                <div class="flex flex-col gap-1">
+                    <label class="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Data</label>
+                    <input type="date" name="date" value="{{ $filterDate }}" class="bg-dash-900 border border-white/10 text-gray-300 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-blue-500/50" />
+                </div>
+
+                {{-- Filtro por usuário (admin only) --}}
+                @if(auth()->user()->isAdmin() && $allUsers->count())
+                <div class="flex flex-col gap-1">
+                    <label class="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Cliente</label>
+                    <select name="user_id" class="bg-dash-900 border border-white/10 text-gray-300 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-blue-500/50">
+                        <option value="">Todos os clientes</option>
+                        @foreach($allUsers as $u)
+                            <option value="{{ $u->id }}" {{ $filterUser == $u->id ? 'selected' : '' }}>{{ $u->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
+
+                <button type="submit" class="self-end px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition">Filtrar</button>
+                <a href="{{ route('admin.logs') }}" class="self-end px-4 py-1.5 bg-white/5 hover:bg-white/10 text-gray-400 text-xs font-bold rounded-xl transition">Limpar</a>
+
+                @if(auth()->user()->isAdmin())
+                <div class="ml-auto self-end flex items-center gap-2">
+                    <button type="button" @click="window.location.reload()" class="p-2 text-gray-500 hover:text-white transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                     </button>
                     <form action="{{ route('admin.logs.clear') }}" method="POST" onsubmit="return confirm('ATENÇÃO: Isso vai excluir TODAS as mensagens na fila de todos os clientes. Continuar?')">
                         @csrf
-                        <button type="submit" class="bg-red-600/10 border border-red-500/20 text-red-500 px-4 py-2 rounded-xl text-[10px] font-bold hover:bg-red-600 hover:text-white transition group flex items-center space-x-2">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            <span>LIMPAR TODA A FILA</span>
+                        <button type="submit" class="bg-red-600/10 border border-red-500/20 text-red-500 px-4 py-1.5 rounded-xl text-[10px] font-bold hover:bg-red-600 hover:text-white transition flex items-center gap-2">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            LIMPAR FILA
                         </button>
                     </form>
                 </div>
-            @endif
+                @endif
+            </form>
         </div>
+
+        {{-- Redis Queue Monitor (admin only) --}}
+        @if(auth()->user()->isAdmin() && count($redisQueueCounts) > 0)
+        <div class="glass p-4 rounded-3xl border-dash-700">
+            <p class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-3">Fila Redis em Tempo Real</p>
+            <div class="flex flex-wrap gap-3">
+                @foreach($redisQueueCounts as $session => $count)
+                <div class="flex items-center gap-2 bg-dash-900 rounded-xl px-3 py-2 border border-white/5">
+                    <span class="w-2 h-2 rounded-full {{ $count > 0 ? 'bg-amber-500 animate-pulse' : 'bg-gray-600' }}"></span>
+                    <span class="text-xs font-mono text-blue-400">{{ $session }}</span>
+                    <span class="text-xs font-black {{ $count > 0 ? 'text-amber-400' : 'text-gray-600' }}">{{ number_format($count) }}</span>
+                    <span class="text-[9px] text-gray-600">msgs</span>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
 
         @if($queuedReason)
         <div class="bg-amber-500/10 border border-amber-500/20 p-6 rounded-[32px] flex items-center justify-between">

@@ -52,7 +52,7 @@ class RecoverMessages extends Command
                             ->where('updated_at', '>', now('UTC')->subHours(1)); // Usamos UTC para bater com o banco
                       });
             })
-            ->where('created_at', '<', now('UTC')->subMinutes(5))
+            ->where('updated_at', '<', now('UTC')->subMinutes(5))
             ->get();
 
         if ($stuckMessages->isEmpty()) {
@@ -60,6 +60,12 @@ class RecoverMessages extends Command
         }
 
         $this->info("Encontradas {$stuckMessages->count()} mensagens travadas. Iniciando recuperação...");
+
+        // Pegar hora atual de Brasília
+        $nowSp = now()->setTimezone('America/Sao_Paulo');
+        $hour = $nowSp->hour;
+        $day = $nowSp->dayOfWeek;
+        $isBusinessHours = ($day >= 1 && $day <= 5 && $hour >= 8 && $hour < 18);
 
         foreach ($stuckMessages as $log) {
             try {
@@ -78,6 +84,12 @@ class RecoverMessages extends Command
                     continue;
                 }
 
+                // Verifica se a instância possui restrição de horário e se estamos fora dele
+                if (isset($instance) && $instance->schedule_type === 'business_hours' && !$isBusinessHours) {
+                    // Mantém na fila silenciosamente aguardando horário comercial
+                    continue;
+                }
+
                 $this->line("Re-enviando ID {$log->id} para a fila: {$session}");
 
                 Redis::rpush('wpp_messages:' . $session, json_encode([
@@ -91,6 +103,8 @@ class RecoverMessages extends Command
                 // Se era uma falha anterior, volta o status para queued no banco
                 if ($log->status === 'failed') {
                     $log->update(['status' => 'queued', 'error_message' => 'Retrying after system failure alert']);
+                } else {
+                    $log->touch(); // Atualiza o updated_at para não enviar repetidamente enquanto está na fila
                 }
 
                 // Logamos no Laravel também para fins de auditoria

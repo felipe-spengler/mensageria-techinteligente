@@ -25,6 +25,15 @@ services:
           memory: 1024M
         reservations:
           memory: 256M
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.http-mensageria.rule=Host(`mensagens.techinteligente.site`)
+      - traefik.http.routers.http-mensageria.entrypoints=http
+      - traefik.http.routers.http-mensageria.middlewares=redirect-to-https
+      - traefik.http.routers.https-mensageria.rule=Host(`mensagens.techinteligente.site`)
+      - traefik.http.routers.https-mensageria.entrypoints=https
+      - traefik.http.routers.https-mensageria.tls=true
+      - traefik.http.routers.https-mensageria.tls.certresolver=letsencrypt
 
   # Laravel Background Worker
   worker:

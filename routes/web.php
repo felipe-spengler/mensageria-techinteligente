@@ -60,6 +60,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/db-manager/{table?}', [\App\Http\Controllers\DatabaseManagerController::class, 'index'])->name('admin.db_manager');
     Route::post('/admin/db-manager/{table}/{id?}', [\App\Http\Controllers\DatabaseManagerController::class, 'save'])->name('admin.db_manager.save');
     Route::delete('/admin/db-manager/{table}/{id}', [\App\Http\Controllers\DatabaseManagerController::class, 'delete'])->name('admin.db_manager.delete');
+
+    // Redis Console (Admin Only)
+    Route::get('/admin/redis', [\App\Http\Controllers\RedisConsoleController::class, 'index'])->name('admin.redis');
+    Route::post('/admin/redis/run', [\App\Http\Controllers\RedisConsoleController::class, 'run'])->name('admin.redis.run');
 });
 
 Route::get('/documentacao', function() {

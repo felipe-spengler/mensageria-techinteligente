@@ -4,6 +4,7 @@ const axios = require('axios');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 require('dotenv').config();
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -13,7 +14,7 @@ const HEAP_LIMIT_MB        = parseInt(process.env.HEAP_LIMIT_MB        || '1400'
 const WATCHDOG_INTERVAL_MS = parseInt(process.env.WATCHDOG_INTERVAL_MS || '30000'); // check every 30s
 const AXIOS_TIMEOUT_MS     = parseInt(process.env.AXIOS_TIMEOUT_MS     || '30000'); // 30s per webhook call
 const QUEUE_MAX_SIZE       = parseInt(process.env.QUEUE_MAX_SIZE       || '10000'); // increased queue depth
-const RATE_LIMIT_MAX       = parseInt(process.env.RATE_LIMIT_MAX       || '20');    // relaxed for pro use
+const RATE_LIMIT_MAX       = parseInt(process.env.RATE_LIMIT_MAX       || '5');     // tightened to 5 for safety
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000'); // 1 min window
 
 function isBusinessHours() {
@@ -358,6 +359,20 @@ async function startWorker(sessionName) {
 
             const message = JSON.parse(data[1]);
             const rawTo   = message.to || '';
+            const msgText = message.message || '';
+
+            // --- WORKER DEDUPLICATION (24h Cache) ---
+            // Proteção final: evita enviar a mesma mensagem pro mesmo número no mesmo chip em 24h.
+            const msgHash = crypto.createHash('md5').update(msgText).digest('hex');
+            const dedupKey = `dedup:${sessionName}:${rawTo}:${msgHash}`;
+            
+            const isDuplicate = await redis.get(dedupKey);
+            if (isDuplicate && !message.force) {
+                console.log(`[WORKER] [${sessionName}] Skipping duplicate message to ${rawTo} (Already sent in last 24h)`);
+                // Notificamos como sucesso para o Laravel para tirar da fila, mas com aviso no log
+                await notifyLaravel(message.log_id, 'sent', 'Ignorado pelo Motor: Mensagem duplicada nas últimas 24h.');
+                continue;
+            }
             
             // Check Business Hours Schedule
             if (message.schedule_type === 'business_hours' && !isBusinessHours()) {
@@ -430,6 +445,8 @@ async function startWorker(sessionName) {
                 }
 
                 await notifyLaravel(message.log_id, 'sent');
+                // Salva no cache de deduplicação por 24 horas para evitar reenvios acidentais
+                await redis.set(dedupKey, '1', 'EX', 86400); 
             } catch (error) {
                 console.error(`[WORKER] [${sessionName}] Error:`, error.message);
 
