@@ -49,10 +49,10 @@ class RecoverMessages extends Command
                                   ->orWhere('error_message', 'like', '%Connection%')
                                   ->orWhere('error_message', 'like', '%refused%');
                             })
-                            ->where('updated_at', '>', now('UTC')->subHours(1)); // Usamos UTC para bater com o banco
+                            ->where('updated_at', '>', now()->subHours(1)); // Mensagens com falha recente
                       });
             })
-            ->where('updated_at', '<', now('UTC')->subMinutes(5))
+            ->where('updated_at', '<', now()->subMinutes(15))
             ->get();
 
         if ($stuckMessages->isEmpty()) {
