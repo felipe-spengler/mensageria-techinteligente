@@ -108,8 +108,8 @@ class RecoverMessages extends Command
                     'session' => $session
                 ]));
 
-                // Marca como "em fila" no Redis por 7 dias (segurança total)
-                Redis::setex($lockKey, 604800, '1');
+                // Marca como "em fila" no Redis (PERMANENTE até o envio)
+                Redis::set($lockKey, '1');
 
 
                 // Se era uma falha anterior, volta o status para queued no banco
