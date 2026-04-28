@@ -447,6 +447,9 @@ async function startWorker(sessionName) {
                 await notifyLaravel(message.log_id, 'sent');
                 // Salva no cache de deduplicação por 24 horas para evitar reenvios acidentais
                 await redis.set(dedupKey, '1', 'EX', 86400); 
+                
+                // LIBERA O ID: A mensagem foi enviada, pode ser enfileirada de novo no futuro se necessário
+                await redis.del(`wpp_enqueued:${message.log_id}`);
             } catch (error) {
                 console.error(`[WORKER] [${sessionName}] Error:`, error.message);
 
@@ -467,6 +470,8 @@ async function startWorker(sessionName) {
                 } else {
                     console.log(`[WORKER] [${sessionName}] Falha definitiva ou limite de tentativas retries atingido. Notificando Laravel: ${error.message}`);
                     await notifyLaravel(message.log_id, 'failed', error.message);
+                    // LIBERA O ID: Processamento encerrado (com falha), permite nova tentativa pelo agendador se for o caso
+                    await redis.del(`wpp_enqueued:${message.log_id}`);
                 }
             }
 
