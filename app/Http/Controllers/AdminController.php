@@ -138,15 +138,23 @@ class AdminController extends Controller
         ];
         $queuedCount = $stats['queued'];
 
-        // Contagem real do Redis por sessão (para admin ver fila real vs banco)
+        // Contagem real do Redis (Admin vê tudo, User vê a sua)
         $redisQueueCounts = [];
         try {
             $redisConn = \Illuminate\Support\Facades\Redis::connection();
-            $redisKeys = $redisConn->keys('wpp_messages:*');
-            foreach ($redisKeys as $rKey) {
-                $cleanKey = str_replace(config('database.redis.options.prefix', ''), '', $rKey);
-                $session  = str_replace('wpp_messages:', '', $cleanKey);
-                $redisQueueCounts[$session] = $redisConn->llen($cleanKey);
+            if ($user->isAdmin()) {
+                $redisKeys = $redisConn->keys('wpp_messages:*');
+                foreach ($redisKeys as $rKey) {
+                    $cleanKey = str_replace(config('database.redis.options.prefix', ''), '', $rKey);
+                    $session  = str_replace('wpp_messages:', '', $cleanKey);
+                    $redisQueueCounts[$session] = $redisConn->llen($cleanKey);
+                }
+            } else {
+                $instance = \App\Models\WhatsappInstance::where('user_id', $user->id)->first();
+                if ($instance) {
+                    $session = $instance->session_name;
+                    $redisQueueCounts[$session] = $redisConn->llen("wpp_messages:{$session}");
+                }
             }
         } catch (\Exception $e) {}
 

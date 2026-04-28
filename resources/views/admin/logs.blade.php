@@ -138,19 +138,21 @@
             </form>
         </div>
 
-        {{-- Redis Queue Monitor (admin only) --}}
-        @if(auth()->user()->isAdmin() && count($redisQueueCounts) > 0)
+        {{-- Redis Queue Monitor (Real-time) --}}
+        @if(count($redisQueueCounts) > 0 || !auth()->user()->isAdmin())
         <div class="glass p-4 rounded-3xl border-dash-700">
-            <p class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-3">Fila Redis em Tempo Real</p>
+            <p class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-3">Fila Redis (Saída Imediata)</p>
             <div class="flex flex-wrap gap-3">
-                @foreach($redisQueueCounts as $session => $count)
+                @forelse($redisQueueCounts as $session => $count)
                 <div class="flex items-center gap-2 bg-dash-900 rounded-xl px-3 py-2 border border-white/5">
                     <span class="w-2 h-2 rounded-full {{ $count > 0 ? 'bg-amber-500 animate-pulse' : 'bg-gray-600' }}"></span>
                     <span class="text-xs font-mono text-blue-400">{{ $session }}</span>
                     <span class="text-xs font-black {{ $count > 0 ? 'text-amber-400' : 'text-gray-600' }}">{{ number_format($count) }}</span>
                     <span class="text-[9px] text-gray-600">msgs</span>
                 </div>
-                @endforeach
+                @empty
+                <div class="text-[10px] text-gray-500 italic">Nenhuma mensagem aguardando envio imediato no Redis.</div>
+                @endforelse
             </div>
         </div>
         @endif
