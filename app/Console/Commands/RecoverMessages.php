@@ -91,6 +91,13 @@ class RecoverMessages extends Command
                     continue;
                 }
 
+                // --- BLINDAGEM: Verifica se o ID já está no Redis ---
+                $lockKey = "wpp_enqueued:{$log->id}";
+                if (Redis::exists($lockKey)) {
+                    $this->warn("ID {$log->id} já está no Redis (enqueued). Pulando para evitar duplicata.");
+                    continue;
+                }
+
                 $this->line("Re-enviando ID {$log->id} para a fila: {$session}");
 
                 Redis::rpush('wpp_messages:' . $session, json_encode([
@@ -100,6 +107,10 @@ class RecoverMessages extends Command
                     'media' => $log->media_url,
                     'session' => $session
                 ]));
+
+                // Marca como "em fila" no Redis por 1 hora (tempo máximo de segurança)
+                Redis::setex($lockKey, 3600, '1');
+
 
                 // Se era uma falha anterior, volta o status para queued no banco
                 if ($log->status === 'failed') {
