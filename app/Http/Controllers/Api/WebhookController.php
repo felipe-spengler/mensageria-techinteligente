@@ -134,8 +134,10 @@ class WebhookController extends Controller
             'status' => 'required|string',
         ]);
 
-        \App\Models\WhatsappInstance::where('session_name', $request->session)
-            ->update(['status' => $request->status]);
+        $instance = \App\Models\WhatsappInstance::where('session_name', $request->session)->first();
+        if ($instance) {
+            $instance->update(['status' => $request->status]);
+        }
 
         return response()->json(['success' => true]);
     }
