@@ -198,7 +198,7 @@ async function initWhatsApp(sessionName) {
             headless: 'new', // Use newer headless mode for better performance
             useChrome: false,
             executablePath: '/usr/bin/chromium',
-            protocolTimeout: 60000, 
+            protocolTimeout: 120000, 
             sessionTokenPath: path.join(__dirname, 'tokens'),
             disableWelcome: true, // Speed up startup
             updatesLog: false,
@@ -436,7 +436,7 @@ async function startWorker(sessionName) {
 
                 await Promise.race([
                     sendOp,
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Send timeout')), 60000))
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Send operation timed out after 90s')), 90000))
                 ]);
 
                 // Limpeza imediata de arquivo temporário
@@ -451,26 +451,29 @@ async function startWorker(sessionName) {
                 // LIBERA O ID: A mensagem foi enviada, pode ser enfileirada de novo no futuro se necessário
                 await redis.del(`wpp_enqueued:${message.log_id}`);
             } catch (error) {
-                console.error(`[WORKER] [${sessionName}] Error:`, error.message);
+                let errorMessage = error.message || 'Unknown error';
+                console.error(`[WORKER] [${sessionName}] Error:`, errorMessage);
 
-                const isDefinitiveError = error.message && (
-                    error.message.includes('destinatário não possui WhatsApp') ||
-                    error.message.includes('No LID for user') ||
-                    error.message.includes('not exists') ||
-                    error.message.includes('Rate limit') ||
-                    error.message.includes('invalid')
-                );
+                // Se o erro for do Puppeteer/Chromium, damos um detalhe extra
+                if (errorMessage.includes('Runtime.callFunctionOn') || errorMessage.includes('protocol error')) {
+                    errorMessage = 'Browser Unresponsive: ' + errorMessage;
+                }
+
+                const isDefinitiveError = errorMessage.includes('destinatário não possui WhatsApp') ||
+                    errorMessage.includes('No LID for user') ||
+                    errorMessage.includes('not exists') ||
+                    errorMessage.includes('Rate limit') ||
+                    errorMessage.includes('invalid');
 
                 const maxRetries = 3;
                 message.retries = (message.retries || 0) + 1;
 
                 if (!isDefinitiveError && message.retries <= maxRetries) {
-                    console.log(`[WORKER] [${sessionName}] Erro de sistema. Recolocando no fim da fila (Tentativa ${message.retries} de ${maxRetries}): ${error.message}`);
+                    console.log(`[WORKER] [${sessionName}] Erro temporário. Tentativa ${message.retries}/${maxRetries}. Erro: ${errorMessage}`);
                     await redis.rpush(sessionKey, JSON.stringify(message));
                 } else {
-                    console.log(`[WORKER] [${sessionName}] Falha definitiva ou limite de tentativas retries atingido. Notificando Laravel: ${error.message}`);
-                    await notifyLaravel(message.log_id, 'failed', error.message);
-                    // LIBERA O ID: Processamento encerrado (com falha), permite nova tentativa pelo agendador se for o caso
+                    console.log(`[WORKER] [${sessionName}] Falha definitiva ou limite de retries. Notificando Laravel: ${errorMessage}`);
+                    await notifyLaravel(message.log_id, 'failed', errorMessage);
                     await redis.del(`wpp_enqueued:${message.log_id}`);
                 }
             }

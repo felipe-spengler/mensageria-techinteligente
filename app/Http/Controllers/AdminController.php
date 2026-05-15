@@ -143,9 +143,13 @@ class AdminController extends Controller
         try {
             $redisConn = \Illuminate\Support\Facades\Redis::connection();
             if ($user->isAdmin()) {
-                $redisKeys = $redisConn->keys('wpp_messages:*');
+                $redisKeys = $redisConn->keys('*wpp_messages:*');
                 foreach ($redisKeys as $rKey) {
-                    $cleanKey = str_replace(config('database.redis.options.prefix', ''), '', $rKey);
+                    // Remove qualquer prefixo de database do Laravel para pegar a chave pura
+                    $cleanKey = $rKey;
+                    if (strpos($rKey, 'wpp_messages:') !== false) {
+                        $cleanKey = substr($rKey, strpos($rKey, 'wpp_messages:'));
+                    }
                     $session  = str_replace('wpp_messages:', '', $cleanKey);
                     $redisQueueCounts[$session] = $redisConn->llen($cleanKey);
                 }
@@ -563,5 +567,45 @@ class AdminController extends Controller
         Auth::user()->update(['webhook_url' => $request->webhook_url]);
 
         return back()->with('success', 'URL de Webhook atualizada no seu perfil!');
+    }
+    public function usersProgress()
+    {
+        if (!Auth::user()->isAdmin()) {
+            abort(403);
+        }
+
+        $users = User::with(['apiKeys' => function($q) {
+            $q->where('status', 'active')->with('plan');
+        }])->get();
+
+        $usersProgress = $users->map(function($user) {
+            $apiKey = $user->apiKeys->first();
+            $plan = $apiKey?->plan;
+            
+            $usage = 0;
+            $limit = $plan?->message_limit ?? 0;
+            $expiresAt = $apiKey?->expires_at;
+            
+            if ($apiKey) {
+                $usage = MessageLog::where('api_key_id', $apiKey->id)
+                    ->whereMonth('created_at', now()->month)
+                    ->whereYear('created_at', now()->year)
+                    ->count();
+            }
+
+            $percent = $limit > 0 ? min(100, round(($usage / $limit) * 100)) : 0;
+
+            return [
+                'user' => $user,
+                'plan_name' => $plan?->name ?? 'Nenhum',
+                'usage' => $usage,
+                'limit' => $limit,
+                'percent' => $percent,
+                'expires_at' => $expiresAt,
+                'is_active' => $apiKey && $apiKey->status === 'active' && (!$expiresAt || $expiresAt->isFuture()),
+            ];
+        });
+
+        return view('admin.users-progress', compact('usersProgress'));
     }
 }

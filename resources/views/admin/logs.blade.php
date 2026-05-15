@@ -139,7 +139,7 @@
         </div>
 
         {{-- Redis Queue Monitor (Real-time) --}}
-        @if(count($redisQueueCounts) > 0 || !auth()->user()->isAdmin())
+        @if(count($redisQueueCounts) > 0 || auth()->check())
         <div class="glass p-4 rounded-3xl border-dash-700">
             <p class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-3">Fila Redis (Saída Imediata)</p>
             <div class="flex flex-wrap gap-3">
