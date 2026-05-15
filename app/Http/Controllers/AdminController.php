@@ -177,8 +177,17 @@ class AdminController extends Controller
             if ($instance) {
                 $status        = strtoupper($instance->status ?? 'OFFLINE');
                 $successStates = ['CONNECTED', 'ISLOGGED', 'AUTHENTICATED', 'LOGGED', 'SYNCING'];
+                
+                // Verifica Horário Comercial
+                $nowSp = now()->setTimezone('America/Sao_Paulo');
+                $hour = $nowSp->hour;
+                $day = $nowSp->dayOfWeek;
+                $isBusinessHours = ($day >= 1 && $day <= 5 && $hour >= 8 && $hour < 18);
+
                 if (!in_array($status, $successStates)) {
                     $queuedReason = 'Aguardando conexão com WhatsApp';
+                } elseif ($instance->schedule_type === 'business_hours' && !$isBusinessHours) {
+                    $queuedReason = 'Aguardando Horário Comercial (08:00 às 18:00)';
                 } else {
                     try {
                         $redisConn2        = \Illuminate\Support\Facades\Redis::connection();
