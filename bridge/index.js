@@ -384,8 +384,26 @@ async function startWorker(sessionName) {
 
             console.log(`[WORKER] [${sessionName}] Sending message to: ${rawTo}`);
 
-            if (isRateLimited(rawTo)) {
-                await notifyLaravel(message.log_id, 'failed', 'Rate limit exceeded');
+            // --- GLOBAL SEND LOCK (SMART STAGGERING) ---
+            let lockAcquired = false;
+            let attempts = 0;
+            const maxLockAttempts = 5; // Tenta por apenas 5 segundos para não "congelar" a instância
+            
+            while (!lockAcquired && attempts < maxLockAttempts) {
+                const result = await redis.set('wpp_global_lock', sessionName, 'NX', 'EX', 15); // Lock expira em 15s se o processo morrer
+                if (result === 'OK') {
+                    lockAcquired = true;
+                } else {
+                    attempts++;
+                    if (attempts < maxLockAttempts) await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+
+            if (!lockAcquired) {
+                console.info(`[WORKER] [${sessionName}] Servidor ocupado (Lock Global). Reenfileirando para evitar sobrecarga...`);
+                await redis.rpush(sessionKey, data[1]);
+                // Espera um cooldown curto antes de tentar a próxima da fila desta instância
+                await new Promise(resolve => setTimeout(resolve, 5000));
                 continue;
             }
 
@@ -473,8 +491,15 @@ async function startWorker(sessionName) {
                     await redis.rpush(sessionKey, JSON.stringify(message));
                 } else {
                     console.log(`[WORKER] [${sessionName}] Falha definitiva ou limite de retries. Notificando Laravel: ${errorMessage}`);
-                    await notifyLaravel(message.log_id, 'failed', errorMessage);
+                // LIBERA O ID: Processamento encerrado (com falha), permite nova tentativa pelo agendador se for o caso
                     await redis.del(`wpp_enqueued:${message.log_id}`);
+                }
+            } finally {
+                // SEMPRE libera o lock global para o próximo chip
+                const currentLock = await redis.get('wpp_global_lock');
+                if (currentLock === sessionName) {
+                    await redis.del('wpp_global_lock');
+                    console.log(`[WORKER] [${sessionName}] Lock Global liberado.`);
                 }
             }
 
