@@ -579,30 +579,47 @@ class AdminController extends Controller
         }])->get();
 
         $usersProgress = $users->map(function($user) {
-            $apiKey = $user->apiKeys->first();
-            $plan = $apiKey?->plan;
+            $activeKey = $user->apiKeys->first();
+            $plan = $activeKey?->plan;
             
-            $usage = 0;
             $limit = $plan?->message_limit ?? 0;
-            $expiresAt = $apiKey?->expires_at;
+            $expiresAt = $activeKey?->expires_at;
+            $monthlyUsage = 0;
             
-            if ($apiKey) {
-                $usage = MessageLog::where('api_key_id', $apiKey->id)
-                    ->whereMonth('created_at', now()->month)
-                    ->whereYear('created_at', now()->year)
+            if ($activeKey) {
+                // Calcula o início do ciclo baseado no dia do vencimento
+                $expiresAt = $activeKey->expires_at;
+                $cycleStart = now()->startOfMonth(); // Fallback
+
+                if ($expiresAt) {
+                    $dayOfExpiry = $expiresAt->day;
+                    $currentDay = now()->day;
+
+                    if ($currentDay < $dayOfExpiry) {
+                        // O ciclo começou no mês passado
+                        $cycleStart = now()->subMonth()->day($dayOfExpiry)->startOfDay();
+                    } else {
+                        // O ciclo começou este mês
+                        $cycleStart = now()->day($dayOfExpiry)->startOfDay();
+                    }
+                }
+
+                $monthlyUsage = MessageLog::where('api_key_id', $activeKey->id)
+                    ->where('status', 'sent')
+                    ->where('created_at', '>=', $cycleStart)
                     ->count();
             }
 
-            $percent = $limit > 0 ? min(100, round(($usage / $limit) * 100)) : 0;
+            $percent = $limit > 0 ? min(100, round(($monthlyUsage / $limit) * 100)) : 0;
 
             return [
                 'user' => $user,
                 'plan_name' => $plan?->name ?? 'Nenhum',
-                'usage' => $usage,
+                'usage' => $monthlyUsage,
                 'limit' => $limit,
                 'percent' => $percent,
                 'expires_at' => $expiresAt,
-                'is_active' => $apiKey && $apiKey->status === 'active' && (!$expiresAt || $expiresAt->isFuture()),
+                'is_active' => $activeKey && $activeKey->status === 'active' && (!$expiresAt || $expiresAt->isFuture()),
             ];
         });
 
