@@ -76,7 +76,13 @@ class WebhookController extends Controller
                 'to' => $dest,
                 'message' => $message,
                 'session' => $session,
+                'schedule_type' => $adminInstance->schedule_type ?? 'all_hours'
             ]));
+
+            // Atualiza o cache do Redis sobre o tipo de agenda desta sessão para o motor saber
+            if ($adminInstance->schedule_type) {
+                $redis->set('wpp_instance:schedule:' . $session, $adminInstance->schedule_type, 'EX', 3600);
+            }
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Failure notification failed: ' . $e->getMessage());
         }

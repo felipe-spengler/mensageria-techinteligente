@@ -374,9 +374,16 @@ async function startWorker(sessionName) {
                 continue;
             }
             
-            // Check Business Hours Schedule
-            if (message.schedule_type === 'business_hours' && !isBusinessHours()) {
-                console.log(`[WORKER] [${sessionName}] Outside business hours. Re-queuing and sleeping 1 min.`);
+            // Check Business Hours Schedule (Message-specific OR Session-level)
+            const brTime = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
+            const day = brTime.getDay();
+            const hour = brTime.getHours();
+            const isBusinessHoursNow = (day >= 1 && day <= 5 && hour >= 8 && hour < 18);
+            
+            const sessionSchedule = await redis.get(`wpp_instance:schedule:${sessionName}`);
+
+            if ((message.schedule_type === 'business_hours' || sessionSchedule === 'business_hours') && !isBusinessHoursNow) {
+                console.log(`[WORKER] [${sessionName}] Outside business hours (Session or Message limit). Re-queuing and sleeping 1 min.`);
                 await redis.rpush(sessionKey, data[1]); // Put it back
                 await new Promise(resolve => setTimeout(resolve, 60000)); // Wait 1 min
                 continue;
