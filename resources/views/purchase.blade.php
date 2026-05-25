@@ -53,6 +53,21 @@
             </button>
         </form>
 
+        <div class="mt-6 border-t border-gray-800 pt-6 text-center">
+            <p class="text-xs text-gray-500 font-semibold flex items-center justify-center">
+                💡 Prefere pagar direto sem taxas?
+            </p>
+            <p class="text-xs text-gray-400 mt-1">
+                Faça o PIX direto para a chave celular:
+            </p>
+            <p class="text-sm font-bold text-emerald-400 mt-1 select-all font-mono">
+                49999459490
+            </p>
+            <p class="text-[10px] text-gray-500 mt-1.5 leading-relaxed">
+                (Após realizar o pagamento, nos envie o comprovante no WhatsApp para fazermos a ativação manual instantânea)
+            </p>
+        </div>
+
         <div id="pixContainer" class="hidden text-center space-y-6">
             <div class="bg-white p-4 rounded-2xl inline-block mx-auto">
                 <img id="pixQr" src="" class="w-48 h-48 mx-auto">

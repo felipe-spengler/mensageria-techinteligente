@@ -584,11 +584,11 @@ class AdminController extends Controller
         }
 
         $users = User::with(['apiKeys' => function($q) {
-            $q->where('status', 'active')->with('plan');
+            $q->with('plan');
         }])->get();
 
         $usersProgress = $users->map(function($user) {
-            $activeKey = $user->apiKeys->first();
+            $activeKey = $user->apiKeys->sortByDesc('created_at')->first();
             $plan = $activeKey?->plan;
             
             $limit = $plan?->message_limit ?? 0;
@@ -632,6 +632,62 @@ class AdminController extends Controller
             ];
         });
 
-        return view('admin.users-progress', compact('usersProgress'));
+        $plans = Plan::all();
+
+        return view('admin.users-progress', compact('usersProgress', 'plans'));
+    }
+
+    public function renewUserPlan(Request $request, User $user)
+    {
+        if (!Auth::user()->isAdmin()) {
+            abort(403);
+        }
+
+        $request->validate([
+            'plan_id' => 'nullable|exists:plans,id',
+        ]);
+
+        // Encontra a chave mais recente do usuário
+        $apiKey = ApiKey::where('user_id', $user->id)->orderBy('created_at', 'desc')->first();
+
+        if ($apiKey) {
+            // Se já tem chave, adiciona 1 mês à data de expiração existente (se for futura) ou a partir de agora (se já expirou)
+            $expiresAt = ($apiKey->expires_at && $apiKey->expires_at->isFuture()) 
+                ? $apiKey->expires_at->addMonth() 
+                : now()->addMonth();
+
+            // Atualiza o plano se for enviado no formulário
+            if ($request->plan_id) {
+                $apiKey->plan_id = $request->plan_id;
+            }
+
+            $apiKey->status = 'active';
+            $apiKey->expires_at = $expiresAt;
+            $apiKey->save();
+
+            $message = "Plano do usuário {$user->name} renovado com sucesso por mais 1 mês! Vencimento: " . $expiresAt->format('d/m/Y');
+        } else {
+            // Se não tem chave, cria uma nova
+            $planId = $request->plan_id ?? Plan::first()?->id;
+
+            if (!$planId) {
+                return back()->with('error', 'Nenhum plano cadastrado no sistema para associar à nova chave.');
+            }
+
+            $expiresAt = now()->addMonth();
+
+            ApiKey::create([
+                'user_id' => $user->id,
+                'plan_id' => $planId,
+                'key' => 'sk_' . \Illuminate\Support\Str::random(32),
+                'status' => 'active',
+                'expires_at' => $expiresAt,
+            ]);
+
+            $message = "Chave criada e plano ativado com sucesso para o usuário {$user->name}! Vencimento: " . $expiresAt->format('d/m/Y');
+        }
+
+        return back()->with('success', $message);
     }
 }
+

@@ -14,6 +14,10 @@
                 <div>
                     <h3 class="text-xl font-bold text-white mb-1">Aguardando Pagamento</h3>
                     <p class="text-gray-400 text-sm">Identificamos um pedido pendente ({{ $pendingPayment->txid }}). Conclua o pagamento via PIX para liberar seus recursos.</p>
+                    <p class="text-emerald-400 text-xs mt-2 font-semibold flex items-center">
+                        <svg class="w-4 h-4 mr-1 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Evite taxas! Se preferir, faça um PIX direto para a chave celular: <strong class="text-white ml-1 font-mono">49999459490</strong> (envie o comprovante para liberação manual).
+                    </p>
                 </div>
             </div>
             <div class="flex items-center space-x-4">

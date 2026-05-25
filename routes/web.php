@@ -44,6 +44,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/save-asaas', [\App\Http\Controllers\AdminController::class, 'saveAsaas'])->name('admin.asaas.save');
     Route::get('/admin/financeiro', [\App\Http\Controllers\AdminController::class, 'financeiro'])->name('admin.financeiro');
     Route::get('/admin/usuarios/progresso', [\App\Http\Controllers\AdminController::class, 'usersProgress'])->name('admin.users_progress');
+    Route::post('/admin/usuarios/renovar/{user}', [\App\Http\Controllers\AdminController::class, 'renewUserPlan'])->name('admin.users.renew');
     Route::post('/admin/financeiro', [\App\Http\Controllers\AdminController::class, 'saveFinanceiro'])->name('admin.financeiro.save');
     Route::post('/admin/financeiro/test', [\App\Http\Controllers\AdminController::class, 'testAsaas'])->name('admin.financeiro.test');
 

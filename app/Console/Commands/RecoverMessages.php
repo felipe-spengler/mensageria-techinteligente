@@ -137,22 +137,46 @@ class RecoverMessages extends Command
 
     private function processExpiryWarnings()
     {
-        $this->info("Verificando planos que vencem em 10 dias...");
-        
-        // Busca chaves que vencem em exatamente 10 dias
-        $expiringKeys = \App\Models\ApiKey::where('status', 'active')
-            ->whereDate('expires_at', now()->addDays(10)->toDateString())
-            ->with('user')
+        $cacheKey = 'expiry_warnings_sent:' . now()->format('Y-m-d');
+        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+            $this->info("Avisos de vencimento já foram processados hoje.");
+            return;
+        }
+
+        // 1. Planos que vencem em exatamente 5 dias
+        $this->info("Verificando planos que vencem em 5 dias...");
+        $expiringIn5 = \App\Models\ApiKey::where('status', 'active')
+            ->whereDate('expires_at', now()->addDays(5)->toDateString())
+            ->with(['user', 'plan'])
             ->get();
 
-        foreach ($expiringKeys as $key) {
+        foreach ($expiringIn5 as $key) {
             if (!$key->user || !$key->user->phone) continue;
 
-            $message = "📢 *Aviso TechInteligente*\n\nOlá, *{$key->user->name}*!\n\nPassando para avisar que sua assinatura do plano *{$key->plan->name}* vence em *10 dias*.\n\nEvite interrupções no seu serviço garantindo a renovação diretamente no painel.\n\n_Acesse aqui: " . config('app.url') . "/admin_";
+            $message = "📢 *Aviso TechInteligente*\n\nOlá, *{$key->user->name}*!\n\nPassando para avisar que sua assinatura do plano *{$key->plan->name}* vence em *5 dias*.\n\nEvite interrupções no seu serviço garantindo a renovação diretamente no painel.\n\nVocê também pode realizar a renovação via PIX direto (sem taxas) pela chave celular:\n🔑 *49999459490*\nApós realizar o pagamento, basta enviar o comprovante aqui e reativaremos na hora!\n\n_Acesse o painel: " . config('app.url') . "/admin_";
 
             $this->pushRawToAdminQueue($key->user->phone, $message);
-            $this->line("Aviso de 10 dias enviado para {$key->user->name}");
+            $this->line("Aviso de 5 dias enviado para {$key->user->name}");
         }
+
+        // 2. Planos que vencem em exatamente 1 dia (amanhã)
+        $this->info("Verificando planos que vencem em 1 dia...");
+        $expiringIn1 = \App\Models\ApiKey::where('status', 'active')
+            ->whereDate('expires_at', now()->addDays(1)->toDateString())
+            ->with(['user', 'plan'])
+            ->get();
+
+        foreach ($expiringIn1 as $key) {
+            if (!$key->user || !$key->user->phone) continue;
+
+            $message = "🚨 *Aviso Importante - TechInteligente*\n\nOlá, *{$key->user->name}*!\n\nSua assinatura do plano *{$key->plan->name}* vence *AMANHÃ*!\n\nPara que suas mensagens não parem de ser enviadas, realize a renovação agora mesmo.\n\nVocê pode pagar via PIX direto (sem taxas) pela chave celular:\n🔑 *49999459490*\nApós o envio, nos mande o comprovante por aqui e faremos a ativação manual imediata!\n\n_Acesse o painel: " . config('app.url') . "/admin_";
+
+            $this->pushRawToAdminQueue($key->user->phone, $message);
+            $this->line("Aviso de 1 dia enviado para {$key->user->name}");
+        }
+
+        // Grava no cache por 24h para não duplicar hoje
+        \Illuminate\Support\Facades\Cache::put($cacheKey, true, now()->addHours(24));
     }
 
     private function pushRawToAdminQueue($to, $message)
