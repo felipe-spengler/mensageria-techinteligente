@@ -30,13 +30,13 @@ class AppServiceProvider extends ServiceProvider
         // API Rate Limiters  – protects VPS from queue flooding / DDoS
         // ───────────────────────────────────────────────────────────
 
-        // Per-API-key: 60 send requests per minute.
+        // Per-API-key: 5000 send requests per minute.
         // Prevents a single customer from flooding the queue.
         RateLimiter::for('api-send', function (Request $request) {
             $apiKey = $request->attributes->get('api_key');
             $key    = $apiKey ? 'apikey:' . $apiKey->id : 'ip:' . $request->ip();
 
-            return Limit::perMinute(60)->by($key)->response(function () {
+            return Limit::perMinute(5000)->by($key)->response(function () {
                 return response()->json([
                     'error'       => 'Too many requests. Please wait before sending more messages.',
                     'retry_after' => 60,
@@ -44,9 +44,9 @@ class AppServiceProvider extends ServiceProvider
             });
         });
 
-        // Global IP-level guard: 300 req/min per IP (covers unauthenticated endpoints).
+        // Global IP-level guard: 5000 req/min per IP (covers unauthenticated endpoints).
         RateLimiter::for('api-global', function (Request $request) {
-            return Limit::perMinute(300)->by($request->ip())->response(function () {
+            return Limit::perMinute(5000)->by($request->ip())->response(function () {
                 return response()->json(['error' => 'Rate limit exceeded.'], 429);
             });
         });
