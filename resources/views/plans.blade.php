@@ -103,13 +103,14 @@
                 ['name' => 'Starter', 'limit' => 200, 'text_id' => 1, 'media_id' => 4, 'savings' => ''],
                 ['name' => 'Premium', 'limit' => 500, 'text_id' => 2, 'media_id' => 5, 'savings' => '40% OFF'],
                 ['name' => 'Business', 'limit' => 1200, 'text_id' => 3, 'media_id' => 6, 'savings' => '68% OFF'],
+                ['name' => 'Enterprise', 'limit' => 1800, 'text_id' => 7, 'media_id' => 8, 'savings' => '75% OFF'],
             ];
 
             // Map database results to the tiers
             $planMap = $plans->keyBy('id');
         @endphp
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             @foreach($tiers as $index => $tier)
                 @php
                     $textPlan = $plans->filter(fn($p) => str_starts_with($p->name, $tier['name']) && $p->type === 'text')->first();

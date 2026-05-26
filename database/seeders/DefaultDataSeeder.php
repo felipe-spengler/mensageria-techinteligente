@@ -40,6 +40,15 @@ class DefaultDataSeeder extends Seeder
                 'is_active' => true,
                 'type' => 'text',
             ],
+            [
+                'name' => 'Enterprise (Texto)',
+                'description' => 'Para escala corporativa e alta demanda de textos.',
+                'price' => 280.00,
+                'message_limit' => 1800,
+                'duration_days' => 30,
+                'is_active' => true,
+                'type' => 'text',
+            ],
             // Categoria: Com Mídia
             [
                 'name' => 'Starter + Mídia',
@@ -64,6 +73,15 @@ class DefaultDataSeeder extends Seeder
                 'description' => 'O plano mais robusto com suporte total a mídia.',
                 'price' => 350.00,
                 'message_limit' => 1200,
+                'duration_days' => 30,
+                'is_active' => true,
+                'type' => 'media',
+            ],
+            [
+                'name' => 'Enterprise + Mídia',
+                'description' => 'O plano definitivo para grandes volumes com mídia.',
+                'price' => 450.00,
+                'message_limit' => 1800,
                 'duration_days' => 30,
                 'is_active' => true,
                 'type' => 'media',
