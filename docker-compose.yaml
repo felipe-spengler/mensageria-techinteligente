@@ -27,6 +27,7 @@ services:
           memory: 256M
     labels:
       - traefik.enable=true
+      - traefik.docker.network=wsgc44okcckccwws4ss4kcww
       - traefik.http.routers.http-mensageria.rule=Host(`mensagens.techinteligente.site`)
       - traefik.http.routers.http-mensageria.entrypoints=http
       - traefik.http.routers.http-mensageria.middlewares=redirect-to-https
