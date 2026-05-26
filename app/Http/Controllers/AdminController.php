@@ -321,6 +321,13 @@ class AdminController extends Controller
 
         $instance->update(['schedule_type' => $request->schedule_type]);
 
+        try {
+            $redis = \Illuminate\Support\Facades\Redis::connection();
+            $redis->set('wpp_instance:schedule:' . $instance->session_name, $request->schedule_type, 'EX', 3600);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Erro ao atualizar agenda no Redis: ' . $e->getMessage());
+        }
+
         return back()->with('success', 'Configuração de horário atualizada!');
     }
 

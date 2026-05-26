@@ -72,11 +72,9 @@ class RecoverMessages extends Command
                 $session = null;
                 
                 // Tenta encontrar a instância do usuário para saber qual fila usar
-                if ($log->apiKey && $log->apiKey->user_id) {
-                    $instance = WhatsappInstance::where('user_id', $log->apiKey->user_id)->first();
-                    if ($instance) {
-                        $session = $instance->session_name;
-                    }
+                $instance = $log->instance;
+                if ($instance) {
+                    $session = $instance->session_name;
                 }
 
                 if (!$session) {
@@ -100,12 +98,18 @@ class RecoverMessages extends Command
 
                 $this->line("Re-enviando ID {$log->id} para a fila: {$session}");
 
+                // Mantém o cache do Redis atualizado
+                if (isset($instance) && $instance->schedule_type) {
+                    Redis::set('wpp_instance:schedule:' . $session, $instance->schedule_type, 'EX', 3600);
+                }
+
                 Redis::rpush('wpp_messages:' . $session, json_encode([
                     'log_id' => $log->id,
                     'to' => $log->to,
                     'message' => $log->message,
                     'media' => $log->media_url,
-                    'session' => $session
+                    'session' => $session,
+                    'schedule_type' => $instance->schedule_type ?? 'full_time'
                 ]));
 
                 // Marca como "em fila" no Redis (PERMANENTE até o envio)
@@ -204,8 +208,14 @@ class RecoverMessages extends Command
                 'to' => $redisTo,
                 'message' => $message,
                 'is_system_notification' => true,
-                'session' => $session
+                'session' => $session,
+                'schedule_type' => $adminInstance->schedule_type ?? 'full_time'
             ]));
+
+            // Mantém o cache do Redis atualizado
+            if (isset($adminInstance) && $adminInstance->schedule_type) {
+                Redis::set('wpp_instance:schedule:' . $session, $adminInstance->schedule_type, 'EX', 3600);
+            }
         } catch (\Exception $e) {
             Log::error('Expiry Notification Redis Error: ' . $e->getMessage());
         }

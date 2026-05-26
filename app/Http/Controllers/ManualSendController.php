@@ -310,12 +310,9 @@ class ManualSendController extends Controller
             
             // Determine session
             $session = null;
-            if ($log->apiKey && $log->apiKey->user) {
-                $instance = \App\Models\WhatsappInstance::where('user_id', $log->apiKey->user_id)->first();
-                if ($instance) $session = $instance->session_name;
-            } elseif ($log->user_id) {
-                $instance = \App\Models\WhatsappInstance::where('user_id', $log->user_id)->first();
-                if ($instance) $session = $instance->session_name;
+            $instance = $log->instance;
+            if ($instance) {
+                $session = $instance->session_name;
             }
 
             if (!$session) {
@@ -324,12 +321,19 @@ class ManualSendController extends Controller
             }
 
             $redis = \Illuminate\Support\Facades\Redis::connection();
+
+            // Mantém o cache do Redis atualizado
+            if (isset($instance) && $instance->schedule_type) {
+                $redis->set('wpp_instance:schedule:' . $session, $instance->schedule_type, 'EX', 3600);
+            }
+
             $redis->rpush('wpp_messages:' . $session, json_encode([
                 'log_id' => $log->id,
                 'to' => $to,
                 'message' => $log->message,
                 'media' => $log->media_url,
                 'session' => $session,
+                'schedule_type' => $instance->schedule_type ?? 'full_time'
             ]));
 
             return true;
