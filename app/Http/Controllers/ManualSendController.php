@@ -327,6 +327,8 @@ class ManualSendController extends Controller
                 $redis->set('wpp_instance:schedule:' . $session, $instance->schedule_type, 'EX', 3600);
             }
 
+            $redis->set("wpp_enqueued:{$log->id}", '1');
+
             $redis->rpush('wpp_messages:' . $session, json_encode([
                 'log_id' => $log->id,
                 'to' => $to,

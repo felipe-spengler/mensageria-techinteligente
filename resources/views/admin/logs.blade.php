@@ -105,6 +105,23 @@
                     <input type="date" name="date" value="{{ $filterDate }}" class="bg-dash-900 border border-white/10 text-gray-300 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-blue-500/50" />
                 </div>
 
+                {{-- Filtro por Mês/Ano --}}
+                <div class="flex flex-col gap-1">
+                    <label class="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Mês / Ano</label>
+                    <input type="month" name="month_year" value="{{ $filterMonthYear }}" class="bg-dash-900 border border-white/10 text-gray-300 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-blue-500/50" />
+                </div>
+
+                {{-- Filtro por Plano --}}
+                <div class="flex flex-col gap-1">
+                    <label class="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Plano</label>
+                    <select name="plan_id" class="bg-dash-900 border border-white/10 text-gray-300 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-blue-500/50">
+                        <option value="">Todos os planos</option>
+                        @foreach($allPlans as $p)
+                            <option value="{{ $p->id }}" {{ $filterPlan == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
                 {{-- Filtro por usuário (admin only) --}}
                 @if(auth()->user()->isAdmin() && $allUsers->count())
                 <div class="flex flex-col gap-1">

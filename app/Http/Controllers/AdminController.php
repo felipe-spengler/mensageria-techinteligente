@@ -106,19 +106,36 @@ class AdminController extends Controller
         $user = Auth::user();
 
         // --- Filtros ---
-        $filterStatus = $request->get('status');
-        $filterUser   = $request->get('user_id');
-        $filterDate   = $request->get('date');
-        $filterPhone  = $request->get('phone');
+        $filterStatus    = $request->get('status');
+        $filterUser      = $request->get('user_id');
+        $filterDate      = $request->get('date');
+        $filterPhone     = $request->get('phone');
+        $filterMonthYear = $request->get('month_year'); // YYYY-MM
+        $filterPlan      = $request->get('plan_id');
 
-        $query = MessageLog::query()->with('apiKey.user')
+        // Cria a query base com todos os filtros (exceto o de status para manter as estatísticas do topo corretas)
+        $baseQuery = MessageLog::query()->with('apiKey.user')
             ->when(!$user->isAdmin(), fn($q) => $q->whereHas('apiKey', fn($aq) => $aq->where('user_id', $user->id)))
             ->when($user->isAdmin() && $filterUser, fn($q) => $q->whereHas('apiKey', fn($aq) => $aq->where('user_id', $filterUser)))
-            ->when($filterStatus, fn($q) => $q->where('status', $filterStatus))
             ->when($filterDate,   fn($q) => $q->whereDate('created_at', $filterDate))
             ->when($filterPhone,  fn($q) => $q->where('to', 'like', "%{$filterPhone}%"));
 
-        $logs = $query->latest()->paginate(20)->withQueryString();
+        // Filtro por Mês/Ano (YYYY-MM)
+        if ($filterMonthYear) {
+            [$year, $month] = explode('-', $filterMonthYear);
+            $baseQuery->whereYear('created_at', $year)->whereMonth('created_at', $month);
+        }
+
+        // Filtro por Plano
+        if ($filterPlan) {
+            $baseQuery->whereHas('apiKey', fn($aq) => $aq->where('plan_id', $filterPlan));
+        }
+
+        // Aplica o filtro de status apenas para a listagem da tabela
+        $logsQuery = clone $baseQuery;
+        $logsQuery->when($filterStatus, fn($q) => $q->where('status', $filterStatus));
+
+        $logs = $logsQuery->latest()->paginate(20)->withQueryString();
 
         // Pré-carrega as instâncias para evitar N+1 queries na view
         $userIds   = $logs->pluck('apiKey.user_id')->unique()->filter();
@@ -127,14 +144,16 @@ class AdminController extends Controller
 
         // Lista de usuários para o filtro do admin
         $allUsers = $user->isAdmin() ? \App\Models\User::orderBy('name')->get(['id', 'name']) : collect();
+        
+        // Lista de planos cadastrados para o filtro
+        $allPlans = \App\Models\Plan::orderBy('name')->get(['id', 'name']);
 
-        // Estatísticas Globais
-        $baseStats = fn() => MessageLog::when(!$user->isAdmin(), fn($q) => $q->whereHas('apiKey', fn($aq) => $aq->where('user_id', $user->id)));
+        // Estatísticas Dinâmicas baseadas nos filtros aplicados (User, Month, Plan, Date, Phone)
         $stats = [
-            'total'  => ($baseStats)()->count(),
-            'sent'   => ($baseStats)()->where('status', 'sent')->count(),
-            'queued' => ($baseStats)()->where('status', 'queued')->count(),
-            'failed' => ($baseStats)()->where('status', 'failed')->count(),
+            'total'  => (clone $baseQuery)->count(),
+            'sent'   => (clone $baseQuery)->where('status', 'sent')->count(),
+            'queued' => (clone $baseQuery)->where('status', 'queued')->count(),
+            'failed' => (clone $baseQuery)->where('status', 'failed')->count(),
         ];
         $queuedCount = $stats['queued'];
 
@@ -207,7 +226,7 @@ class AdminController extends Controller
             'logs', 'queuedReason', 'queuedCount', 'nextSendIn',
             'stats', 'planLimit', 'planUsage', 'planUsagePercent', 'apiKey',
             'allUsers', 'filterUser', 'filterStatus', 'filterDate', 'filterPhone',
-            'redisQueueCounts'
+            'redisQueueCounts', 'allPlans', 'filterMonthYear', 'filterPlan'
         ));
     }
 
@@ -531,6 +550,7 @@ class AdminController extends Controller
         // Empurra para o Redis
         try {
             $redis = \Illuminate\Support\Facades\Redis::connection();
+            $redis->set("wpp_enqueued:{$log->id}", '1');
             $redis->rpush('wpp_messages:' . $instance->session_name, json_encode([
                 'log_id' => $log->id,
                 'to' => $log->to,
