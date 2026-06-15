@@ -184,7 +184,7 @@ class AdminController extends Controller
         // Uso do Plano
         $apiKey           = ApiKey::where('user_id', $user->id)->where('status', 'active')->with('plan')->first();
         $planLimit        = $apiKey?->plan?->message_limit ?? 0;
-        $planUsage        = $apiKey ? MessageLog::where('api_key_id', $apiKey->id)->whereMonth('created_at', now()->month)->count() : 0;
+        $planUsage        = $apiKey ? MessageLog::where('api_key_id', $apiKey->id)->where('created_at', '>=', $apiKey->updated_at)->count() : 0;
         $planUsagePercent = $planLimit > 0 ? min(100, round(($planUsage / $planLimit) * 100)) : 0;
 
         // Estado da fila
@@ -623,22 +623,7 @@ class AdminController extends Controller
             $monthlyUsage = 0;
             
             if ($activeKey) {
-                // Calcula o início do ciclo baseado no dia do vencimento
-                $expiresAt = $activeKey->expires_at;
-                $cycleStart = now()->startOfMonth(); // Fallback
-
-                if ($expiresAt) {
-                    $dayOfExpiry = $expiresAt->day;
-                    $currentDay = now()->day;
-
-                    if ($currentDay < $dayOfExpiry) {
-                        // O ciclo começou no mês passado
-                        $cycleStart = now()->subMonth()->day($dayOfExpiry)->startOfDay();
-                    } else {
-                        // O ciclo começou este mês
-                        $cycleStart = now()->day($dayOfExpiry)->startOfDay();
-                    }
-                }
+                $cycleStart = $activeKey->updated_at;
 
                 $monthlyUsage = MessageLog::where('api_key_id', $activeKey->id)
                     ->where('status', 'sent')
@@ -690,6 +675,7 @@ class AdminController extends Controller
 
             $apiKey->status = 'active';
             $apiKey->expires_at = $expiresAt;
+            $apiKey->updated_at = now();
             $apiKey->save();
 
             $message = "Plano do usuário {$user->name} renovado com sucesso por mais 1 mês! Vencimento: " . $expiresAt->format('d/m/Y');

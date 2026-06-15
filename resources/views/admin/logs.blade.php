@@ -79,6 +79,9 @@
         {{-- Filter Bar --}}
         <div class="glass p-4 rounded-3xl border-dash-700">
             <form method="GET" action="{{ route('admin.logs') }}" class="flex flex-wrap items-end gap-3">
+                @if($filterStatus)
+                    <input type="hidden" name="status" value="{{ $filterStatus }}">
+                @endif
 
                 {{-- Status --}}
                 <div class="flex flex-col gap-1">

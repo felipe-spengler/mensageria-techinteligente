@@ -91,7 +91,7 @@ class MessageController extends Controller
 
             // 2. Check message limit
             $messageCount = MessageLog::where('api_key_id', $apiKey->id)
-                ->whereMonth('created_at', now()->month)
+                ->where('created_at', '>=', $apiKey->updated_at)
                 ->count();
 
             if ($apiKey->plan->message_limit > 0 && $messageCount >= $apiKey->plan->message_limit) {
