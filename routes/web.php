@@ -8,6 +8,12 @@ Route::get('/admin/login', [LoginController::class, 'showLoginForm'])->name('log
 Route::post('/admin/login', [LoginController::class, 'login']);
 Route::post('/admin/logout', [LoginController::class, 'logout'])->name('logout');
 
+// Password Reset Routes
+Route::get('/admin/password/reset', [LoginController::class, 'showResetRequestForm'])->name('password.request');
+Route::post('/admin/password/code', [LoginController::class, 'sendResetCode'])->name('password.code');
+Route::get('/admin/password/verify', [LoginController::class, 'showVerifyCodeForm'])->name('password.verify');
+Route::post('/admin/password/reset', [LoginController::class, 'resetPassword'])->name('password.update');
+
 Route::get('/', [\App\Http\Controllers\PlanController::class, 'index']);
 // B2C / Manual Send (Disabled to focus on SaaS)
 // Route::get('/enviar', [ManualSendController::class, 'index']);
