@@ -498,8 +498,10 @@ async function startWorker(sessionName) {
                     await redis.rpush(sessionKey, JSON.stringify(message));
                 } else {
                     console.log(`[WORKER] [${sessionName}] Falha definitiva ou limite de retries. Notificando Laravel: ${errorMessage}`);
-                // LIBERA O ID: Processamento encerrado (com falha), permite nova tentativa pelo agendador se for o caso
+                    // LIBERA O ID: Processamento encerrado (com falha), permite nova tentativa pelo agendador se for o caso
                     await redis.del(`wpp_enqueued:${message.log_id}`);
+                    // Notifica o Laravel para registrar a falha no banco de dados e disparar o alerta de erro
+                    await notifyLaravel(message.log_id, 'failed', errorMessage);
                 }
             } finally {
                 // SEMPRE libera o lock global para o próximo chip

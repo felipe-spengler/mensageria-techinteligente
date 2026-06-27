@@ -54,12 +54,38 @@ class WebhookController extends Controller
             $user = \App\Models\User::find($log->user_id);
         }
 
-        if (!$user || !$user->phone) return;
+        if (!$user) return;
 
-        $dest = preg_replace('/[^0-9]/', '', $user->phone);
-        if (strlen($dest) < 10) return;
+        // Classify the error type (Server vs Client)
+        $isServerIssue = false;
+        $errMsg = strtolower($log->error_message ?? '');
+        
+        if (str_contains($errMsg, 'browser unresponsive') || 
+            str_contains($errMsg, 'protocol error') || 
+            str_contains($errMsg, 'timeout') || 
+            str_contains($errMsg, 'connection refused') || 
+            str_contains($errMsg, 'unreachable')) {
+            $isServerIssue = true;
+        }
 
-        $message = "❌ *Erro de Entrega TechInteligente*\n\nIdentificamos uma falha ao enviar sua mensagem para: *{$log->to}*.\n\n*Erro:* {$log->error_message}\n\n_Verifique se seu dispositivo está conectado e se o número de destino é válido._";
+        if ($isServerIssue) {
+            // Server/System error: notify the Admin (User ID 1)
+            $adminUser = \App\Models\User::find(1);
+            if (!$adminUser || !$adminUser->phone) return;
+            
+            $dest = preg_replace('/[^0-9]/', '', $adminUser->phone);
+            if (strlen($dest) < 10) return;
+            
+            $message = "⚠️ *Alerta do Sistema (Admin) - Falha de Servidor*\n\nOcorreu uma falha no servidor ao tentar enviar a mensagem do cliente *{$user->name}* para *{$log->to}*.\n\n*Erro:* {$log->error_message}\n\n_Verifique o status da Bridge na VPS._";
+        } else {
+            // Client error (e.g. disconnected, invalid number): notify the client
+            if (!$user->phone) return;
+            
+            $dest = preg_replace('/[^0-9]/', '', $user->phone);
+            if (strlen($dest) < 10) return;
+            
+            $message = "❌ *Erro de Entrega TechInteligente*\n\nIdentificamos uma falha ao enviar sua mensagem para: *{$log->to}*.\n\n*Erro:* {$log->error_message}\n\n_Verifique se seu dispositivo está conectado e se o número de destino é válido._";
+        }
 
         try {
             // Busca a instância do admin (ID 1) para enviar notificações do sistema
