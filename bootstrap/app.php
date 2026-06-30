@@ -12,6 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->api(append: [
+            \App\Http\Middleware\LogApiRequests::class,
+        ]);
+
         $middleware->alias([
             'active_plan' => \App\Http\Middleware\CheckActivePlan::class,
         ]);
