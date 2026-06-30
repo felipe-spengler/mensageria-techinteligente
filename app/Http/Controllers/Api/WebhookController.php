@@ -32,9 +32,14 @@ class WebhookController extends Controller
             return response()->json(['success' => true]);
         }
 
+        $errorMessage = $request->error_message;
+        if ($errorMessage) {
+            $errorMessage = $this->translateErrorMessage($errorMessage);
+        }
+
         $log->update([
             'status' => $request->status,
-            'error_message' => $request->error_message,
+            'error_message' => $errorMessage,
             'sent_at' => $request->status === 'sent' ? now() : null,
         ]);
 
@@ -171,5 +176,41 @@ class WebhookController extends Controller
         }
 
         return response()->json(['success' => true]);
+    }
+
+    private function translateErrorMessage(?string $error): ?string
+    {
+        if (empty($error)) {
+            return $error;
+        }
+
+        // Se já está em português amigável, mantém
+        if (str_contains($error, 'O número não possui') || str_contains($error, 'Instabilidade')) {
+            return $error;
+        }
+
+        $errorLower = strtolower($error);
+
+        if (str_contains($errorLower, 'no lid') || str_contains($errorLower, 'new chat not found')) {
+            return 'O número de destino não possui uma conta de WhatsApp ativa ou o número é inválido.';
+        }
+
+        if (str_contains($errorLower, 'browser unresponsive') || str_contains($errorLower, 'protocol error') || str_contains($errorLower, 'callfunctionon')) {
+            return 'Instabilidade temporária no navegador do servidor (sistema tentará reenviar automaticamente).';
+        }
+
+        if (str_contains($errorLower, 'timeout') || str_contains($errorLower, 'timed out')) {
+            return 'Tempo limite esgotado ao tentar enviar a mensagem. O número de destino pode estar offline ou instável.';
+        }
+
+        if (str_contains($errorLower, 'rate limit')) {
+            return 'Limite de taxa de envio excedido temporariamente.';
+        }
+
+        if (str_contains($errorLower, 'connection refused') || str_contains($errorLower, 'unreachable')) {
+            return 'Falha de conexão com o servidor de envio.';
+        }
+
+        return $error;
     }
 }
