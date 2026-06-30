@@ -27,6 +27,11 @@ class WebhookController extends Controller
         $log = MessageLog::find($request->log_id);
         $oldStatus = $log->status;
         
+        // Se a mensagem já foi enviada com sucesso, ignora avisos de duplicidade do motor
+        if ($oldStatus === 'sent' && str_contains($request->error_message ?? '', 'Ignorado pelo Motor')) {
+            return response()->json(['success' => true]);
+        }
+
         $log->update([
             'status' => $request->status,
             'error_message' => $request->error_message,
