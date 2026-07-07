@@ -123,6 +123,7 @@ let isInitializingGlobal = false;
 // WHATSAPP INIT
 // ─────────────────────────────────────────────────────────────────────────────
 async function initWhatsApp(sessionName) {
+    const sessionPath = path.join(__dirname, 'tokens', sessionName);
     if (clients.has(sessionName)) {
         console.log(`[BOOT] Session ${sessionName} already exists.`);
         return;
@@ -157,7 +158,7 @@ async function initWhatsApp(sessionName) {
         console.log(`[BOOT] Initializing session: ${sessionName}`);
         notifyLaravelStatus(sessionName, 'connecting');
 
-        const sessionPath = path.join(__dirname, 'tokens', sessionName);
+
         
         if (fs.existsSync(sessionPath)) {
             try {
