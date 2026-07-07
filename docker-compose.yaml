@@ -125,6 +125,7 @@ services:
       - ./bridge/tokens:/app/tokens
     depends_on:
       - redis
+    shm_size: '1gb'
     environment:
       REDIS_URL: redis://redis:6379
       WEBHOOK_URL: http://app/api/v1/webhook
