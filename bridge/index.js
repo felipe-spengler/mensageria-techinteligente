@@ -155,6 +155,7 @@ async function initWhatsApp(sessionName) {
 
         connectionStatuses.set(sessionName, 'connecting');
         console.log(`[BOOT] Initializing session: ${sessionName}`);
+        notifyLaravelStatus(sessionName, 'connecting');
 
         const sessionPath = path.join(__dirname, 'tokens', sessionName);
         
@@ -178,6 +179,7 @@ async function initWhatsApp(sessionName) {
                 qrCodes.set(sessionName, base64Qr);
                 connectionStatuses.set(sessionName, 'qr_ready');
                 console.log(`[${sessionName}] QR Code updated`);
+                notifyLaravelStatus(sessionName, 'qr_ready');
             },
             statusFind: (status) => {
                 let cleanStatus = status.toLowerCase();
@@ -256,6 +258,7 @@ async function initWhatsApp(sessionName) {
     } catch (err) {
         console.error(`[${sessionName}] Error creating client:`, err.message);
         connectionStatuses.set(sessionName, 'failed');
+        notifyLaravelStatus(sessionName, 'failed');
         
         // Se deu erro, precisamos garantir que o lock foi liberado
         isInitializingGlobal = false;

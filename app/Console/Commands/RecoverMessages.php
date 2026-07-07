@@ -112,8 +112,8 @@ class RecoverMessages extends Command
                     'schedule_type' => $instance->schedule_type ?? 'full_time'
                 ]));
 
-                // Marca como "em fila" no Redis (Expira em 1 hora para evitar travar para sempre)
-                Redis::set($lockKey, '1', 'EX', 3600);
+                // Marca como "em fila" no Redis (Expira em 48 horas para evitar duplicação em offline longo)
+                Redis::set($lockKey, '1', 'EX', 172800);
 
 
                 // Se era uma falha anterior, volta o status para queued no banco
