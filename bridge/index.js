@@ -200,7 +200,6 @@ async function initWhatsApp(sessionName) {
             },
             headless: 'new', // Use newer headless mode for better performance
             useChrome: false,
-            executablePath: '/usr/bin/chromium',
             protocolTimeout: 120000, 
             sessionTokenPath: path.join(__dirname, 'tokens'),
             disableWelcome: true, // Speed up startup

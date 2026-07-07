@@ -4,7 +4,6 @@ LABEL maintainer="TechInteligente"
 
 # Dependências do Puppeteer/Chromium (estáveis para Debian/Node 20)
 RUN apt-get update && apt-get install -y \
-    chromium \
     fonts-ipafont-gothic \
     fonts-freefont-ttf \
     fonts-thai-tlwg \
@@ -33,10 +32,6 @@ ARG APP_ENV=production
 ARG INTERNAL_KEY
 ARG REDIS_URL
 ARG WEBHOOK_URL
-
-# Variáveis para o Puppeteer encontrar o Chromium corretamente
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
 
