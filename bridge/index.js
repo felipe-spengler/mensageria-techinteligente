@@ -260,6 +260,17 @@ async function initWhatsApp(sessionName) {
         connectionStatuses.set(sessionName, 'failed');
         notifyLaravelStatus(sessionName, 'failed');
         
+        // Auto-recuperação de perfil corrompido: se o Chromium falhar ao iniciar, deletamos a pasta de tokens para recomeçar do zero
+        if (err.message && (err.message.includes('Failed to launch') || err.message.includes('browser') || err.message.includes('launch'))) {
+            console.warn(`[${sessionName}] Falha na inicialização do Chromium detectada (possível perfil corrompido). Limpando pasta de tokens em ${sessionPath}...`);
+            try {
+                fs.rmSync(sessionPath, { recursive: true, force: true });
+                console.log(`[${sessionName}] Pasta de tokens limpa com sucesso.`);
+            } catch (rmErr) {
+                console.error(`[${sessionName}] Erro ao limpar pasta de tokens:`, rmErr.message);
+            }
+        }
+        
         // Se deu erro, precisamos garantir que o lock foi liberado
         isInitializingGlobal = false;
         sessionsStarting.delete(sessionName);
