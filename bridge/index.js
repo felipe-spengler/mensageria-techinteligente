@@ -335,6 +335,19 @@ function startSessionWatchdog() {
 
                 if (restartableStates.includes(status)) {
                     console.log(`[WATCHDOG] Session ${name} is in state: ${status}. Attempting recovery restart.`);
+                    
+                    if (client) {
+                        try {
+                            console.log(`[WATCHDOG] [${name}] Closing client to avoid zombie Chromium processes.`);
+                            await Promise.race([
+                                client.close(),
+                                new Promise((_, reject) => setTimeout(() => reject(new Error('Close timeout')), 10000))
+                            ]).catch(e => console.warn(`[WATCHDOG] [${name}] Error closing client:`, e.message));
+                        } catch (closeErr) {
+                            console.warn(`[WATCHDOG] [${name}] Close failed:`, closeErr.message);
+                        }
+                    }
+
                     clients.delete(name);
                     qrCodes.delete(name);
                     initWhatsApp(name);
@@ -349,11 +362,18 @@ function startSessionWatchdog() {
 // ─────────────────────────────────────────────────────────────────────────────
 // QUEUE PROCESSOR
 // ─────────────────────────────────────────────────────────────────────────────
-const activeWorkers = new Set();
+const activeWorkers = new Map();
 
 async function startWorker(sessionName) {
-    if (activeWorkers.has(sessionName)) return;
-    activeWorkers.add(sessionName);
+    const currentClient = clients.get(sessionName);
+    if (!currentClient) return;
+
+    const activeClient = activeWorkers.get(sessionName);
+    if (activeClient === currentClient) {
+        return; // Already running for this exact client instance
+    }
+
+    activeWorkers.set(sessionName, currentClient);
     
     console.log(`[WORKER] [${sessionName}] Started.`);
     const sessionKey = `wpp_messages:${sessionName}`;
@@ -361,9 +381,11 @@ async function startWorker(sessionName) {
     while (!isShuttingDown) {
         try {
             const client = clients.get(sessionName);
-            if (!client) {
-                console.log(`[WORKER] [${sessionName}] Client lost. Stopping worker.`);
-                activeWorkers.delete(sessionName);
+            if (!client || client !== currentClient) {
+                console.log(`[WORKER] [${sessionName}] Client changed or lost. Stopping worker.`);
+                if (activeWorkers.get(sessionName) === currentClient) {
+                    activeWorkers.delete(sessionName);
+                }
                 break;
             }
 
@@ -546,7 +568,9 @@ async function startWorker(sessionName) {
             await new Promise(resolve => setTimeout(resolve, 5000));
         }
     }
-    activeWorkers.delete(sessionName);
+    if (activeWorkers.get(sessionName) === currentClient) {
+        activeWorkers.delete(sessionName);
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
