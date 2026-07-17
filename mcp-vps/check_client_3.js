@@ -15,8 +15,12 @@ conn.on('ready', () => {
     docker exec $(docker ps -q --filter name=db-wsgc44) mysql -uapp_user -psupersenha -e "USE mensageria; SELECT * FROM whatsapp_instances;"
     
     echo ""
+    echo "=== BRIDGE LOGS FOR client_1 ==="
+    docker logs $(docker ps -q --filter name=bridge-wsgc44) --tail 1000 | grep -i "client_1" | tail -n 30
+
+    echo ""
     echo "=== BRIDGE LOGS FOR client_3 ==="
-    docker logs $(docker ps -q --filter name=bridge-wsgc44) --tail 1000 | grep -i "client_3" | tail -n 20
+    docker logs $(docker ps -q --filter name=bridge-wsgc44) --tail 1000 | grep -i "client_3" | tail -n 30
   `;
   
   conn.exec(cmd, (err, stream) => {

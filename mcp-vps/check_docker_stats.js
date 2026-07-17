@@ -11,6 +11,10 @@ const conn = new Client();
 conn.on('ready', () => {
   console.log('SSH Connection Ready. Fetching docker stats...');
   const cmd = `
+    free -m
+    echo "---"
+    df -h
+    echo "---"
     docker stats --no-stream
   `;
   

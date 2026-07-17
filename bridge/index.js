@@ -367,6 +367,14 @@ async function startWorker(sessionName) {
                 break;
             }
 
+            const status = connectionStatuses.get(sessionName);
+            const isConnected = status && ['islogged', 'logged', 'authenticated', 'main', 'syncing', 'inchat', 'connected'].includes(status.toLowerCase());
+            if (!isConnected) {
+                console.log(`[WORKER] [${sessionName}] Instance status is '${status}' (not connected). Waiting 10s...`);
+                await new Promise(resolve => setTimeout(resolve, 10000));
+                continue;
+            }
+
             console.log(`[WORKER] Checking queue for: ${sessionName} (${sessionKey})`);
             const data = await redis.blpop(sessionKey, 10); // 10s wait
             if (!data) continue;

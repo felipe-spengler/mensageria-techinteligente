@@ -105,6 +105,9 @@ class MessageController extends Controller
             }
         }
 
+        $instance = $instance ?? \App\Models\WhatsappInstance::where('user_id', $apiKey->user_id)->first();
+        $isInstanceConnected = $instance && in_array(strtolower($instance->status), ['connected', 'islogged', 'logged', 'authenticated', 'syncing']);
+
         // Create log entry
         $log = MessageLog::create([
             'api_key_id' => $apiKey->id,
@@ -117,12 +120,18 @@ class MessageController extends Controller
         // Push to Redis for Node.js worker
         $this->pushToQueue($log);
 
-        return response()->json([
+        $responsePayload = [
             'success' => true,
             'message' => 'Message queued successfully',
             'log_id' => $log->id,
             'remaining' => $apiKey->plan ? (max(0, $apiKey->plan->message_limit - ($messageCount + 1))) : 'unlimited'
-        ]);
+        ];
+
+        if (!$isInstanceConnected) {
+            $responsePayload['warning'] = 'Sua instância de WhatsApp está desconectada. A mensagem foi aceita e salva, mas o envio só ocorrerá após a instância ser reconectada.';
+        }
+
+        return response()->json($responsePayload);
     }
 
     public function qrcode(Request $request)
