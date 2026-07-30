@@ -464,7 +464,10 @@ async function startWorker(sessionName) {
 
                 // Trata o erro 'No LID for user' tentando validar o número antes do envio
                 try {
-                    const profile = await client.checkNumberStatus(to);
+                    const profile = await Promise.race([
+                        client.checkNumberStatus(to),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('checkNumberStatus timed out after 15s')), 15000))
+                    ]);
                     if (profile && profile.numberExists && profile.id && profile.id._serialized) {
                         to = profile.id._serialized;
                     } else if (profile && !profile.numberExists) {
@@ -472,6 +475,15 @@ async function startWorker(sessionName) {
                     }
                 } catch (checkErr) {
                     console.log(`[WORKER] [${sessionName}] checkNumberStatus falhou para ${to}: ${checkErr.message || checkErr}`);
+                    if (checkErr.message && (
+                        checkErr.message.includes('timed out') || 
+                        checkErr.message.includes('Runtime.callFunctionOn') || 
+                        checkErr.message.includes('protocol error') ||
+                        checkErr.message.includes('Invariant Violation') ||
+                        checkErr.message.includes('Minified invariant')
+                    )) {
+                        throw checkErr; // Repassa o erro para cair no catch externo e disparar a limpeza
+                    }
                 }
 
                 let mediaPath = message.media;
@@ -523,9 +535,46 @@ async function startWorker(sessionName) {
                 let errorMessage = error.message || 'Unknown error';
                 console.error(`[WORKER] [${sessionName}] Error:`, errorMessage);
 
+                const isInvariantViolation = errorMessage.includes('Invariant Violation') || errorMessage.includes('Minified invariant');
+
                 // Se o erro for do Puppeteer/Chromium, damos um detalhe extra
-                if (errorMessage.includes('Runtime.callFunctionOn') || errorMessage.includes('protocol error')) {
-                    errorMessage = 'Browser Unresponsive: ' + errorMessage;
+                if (errorMessage.includes('Runtime.callFunctionOn') || errorMessage.includes('protocol error') || errorMessage.includes('timed out') || isInvariantViolation) {
+                    if (isInvariantViolation) {
+                        errorMessage = 'Browser Session Corrupted (Invariant Violation): ' + errorMessage;
+                    } else {
+                        errorMessage = 'Browser Unresponsive: ' + errorMessage;
+                    }
+                    
+                    // Atualiza o status local e notifica o Laravel para o Watchdog reiniciar
+                    connectionStatuses.set(sessionName, 'failed');
+                    notifyLaravelStatus(sessionName, 'failed');
+
+                    if (isInvariantViolation) {
+                        console.warn(`[WORKER] [${sessionName}] Invariant Violation detectado. Limpando pasta de tokens para forçar novo QR Code...`);
+                        const sessionPath = path.join(__dirname, 'tokens', sessionName);
+                        try {
+                            const clientToClose = clients.get(sessionName);
+                            if (clientToClose) {
+                                clients.delete(sessionName);
+                                qrCodes.delete(sessionName);
+                                await Promise.race([
+                                    clientToClose.close(),
+                                    new Promise((_, reject) => setTimeout(() => reject(new Error('Close timeout')), 5000))
+                                ]).catch(e => console.warn(`[WORKER] [${sessionName}] Erro ao fechar client:`, e.message));
+                            }
+                        } catch (closeErr) {
+                            console.error(`[WORKER] [${sessionName}] Falha ao encerrar client:`, closeErr.message);
+                        }
+                        
+                        try {
+                            if (fs.existsSync(sessionPath)) {
+                                fs.rmSync(sessionPath, { recursive: true, force: true });
+                                console.log(`[WORKER] [${sessionName}] Pasta de tokens deletada com sucesso.`);
+                            }
+                        } catch (rmErr) {
+                            console.error(`[WORKER] [${sessionName}] Erro ao deletar pasta de tokens:`, rmErr.message);
+                        }
+                    }
                 }
 
                 const isDefinitiveError = errorMessage.includes('destinatário não possui WhatsApp') ||
@@ -626,6 +675,97 @@ app.get('/qrcode/:session', (req, res) => {
         res.end(img);
     } else {
         res.status(404).json({ status: 'not_available', sessionStatus: status });
+    }
+});
+
+app.get('/host/:session', async (req, res) => {
+    const session = req.params.session;
+    const client = clients.get(session);
+    if (!client) {
+        return res.status(404).json({ error: 'Session not found' });
+    }
+    try {
+        const device = await client.getHostDevice();
+        res.json(device);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/screenshot/:session', async (req, res) => {
+    const session = req.params.session;
+    const client = clients.get(session);
+    if (!client || !client.page) {
+        return res.status(404).json({ error: 'Session or page not found' });
+    }
+    try {
+        const img = await client.page.screenshot({ type: 'png' });
+        res.writeHead(200, {
+            'Content-Type': 'image/png',
+            'Content-Length': img.length
+        });
+        res.end(img);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/scroll/:session', async (req, res) => {
+    const session = req.params.session;
+    const client = clients.get(session);
+    if (!client || !client.page) {
+        return res.status(404).json({ error: 'Session or page not found' });
+    }
+    try {
+        await client.page.evaluate(() => {
+            const pane = document.querySelector('#pane-side');
+            if (pane) pane.scrollTop += 600;
+        });
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const img = await client.page.screenshot({ type: 'png' });
+        res.writeHead(200, {
+            'Content-Type': 'image/png',
+            'Content-Length': img.length
+        });
+        res.end(img);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/send-test/:session', async (req, res) => {
+    const session = req.params.session;
+    const client = clients.get(session);
+    if (!client) {
+        return res.status(404).json({ error: 'Session not found' });
+    }
+    const { to, message } = req.body;
+    try {
+        console.log(`[TEST-ROUTE] Sending message to ${to}`);
+        const result = await client.sendText(to, message);
+        console.log(`[TEST-ROUTE] Result:`, JSON.stringify(result));
+        res.json(result);
+    } catch (e) {
+        console.error(`[TEST-ROUTE] Error:`, e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/check-number/:session', async (req, res) => {
+    const session = req.params.session;
+    const client = clients.get(session);
+    if (!client) {
+        return res.status(404).json({ error: 'Session not found' });
+    }
+    const { to } = req.body;
+    try {
+        console.log(`[CHECK-ROUTE] Checking status of ${to}`);
+        const result = await client.checkNumberStatus(to);
+        console.log(`[CHECK-ROUTE] Result:`, JSON.stringify(result));
+        res.json(result);
+    } catch (e) {
+        console.error(`[CHECK-ROUTE] Error:`, e.message);
+        res.status(500).json({ error: e.message });
     }
 });
 
