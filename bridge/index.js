@@ -186,7 +186,11 @@ async function initWhatsApp(sessionName) {
                 let cleanStatus = status.toLowerCase();
                 
                 // Normalização: Se não está logado, para a UI é "pronto para scan"
-                if (cleanStatus === 'notlogged' || cleanStatus === 'desconnectedmobile' || cleanStatus === 'desconnected' || cleanStatus === 'disconnected') {
+                if (cleanStatus === 'notlogged' || 
+                    cleanStatus === 'desconnectedmobile' || 
+                    cleanStatus === 'disconnectedmobile' || 
+                    cleanStatus === 'desconnected' || 
+                    cleanStatus === 'disconnected') {
                     cleanStatus = 'qr_ready';
                 }
                 
