@@ -115,6 +115,7 @@ const redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
 const clients = new Map();
 const qrCodes = new Map();
 const connectionStatuses = new Map();
+const qrReadyTimestamps = new Map(); // Tracks how long a session is in qr_ready
 const sessionsStarting = new Set(); // Track sessions currently initializing
 let isShuttingDown = false;
 let isInitializingGlobal = false;
@@ -196,6 +197,7 @@ async function initWhatsApp(sessionName) {
                 
                 if (cleanStatus === 'inchat' || cleanStatus === 'islogged' || cleanStatus === 'authenticated') {
                     cleanStatus = 'connected';
+                    qrReadyTimestamps.delete(sessionName); // clean up
                 }
                 
                 connectionStatuses.set(sessionName, cleanStatus);
@@ -332,6 +334,35 @@ function startSessionWatchdog() {
         for (const [name, client] of clients.entries()) {
             try {
                 const status = connectionStatuses.get(name);
+                
+                // --- IDLE QR_READY TIMEOUT LOGIC ---
+                if (status === 'qr_ready') {
+                    const since = qrReadyTimestamps.get(name) || Date.now();
+                    if (!qrReadyTimestamps.has(name)) {
+                        qrReadyTimestamps.set(name, since);
+                    } else if (Date.now() - since > 3 * 60 * 1000) {
+                        console.log(`[WATCHDOG] Session ${name} idle in QR_READY for > 3 mins. Sleeping client to save resources.`);
+                        qrReadyTimestamps.delete(name);
+                        connectionStatuses.set(name, 'sleeping'); 
+                        notifyLaravelStatus(name, 'sleeping');
+                        
+                        if (client) {
+                            try {
+                                await Promise.race([
+                                    client.close(),
+                                    new Promise((_, reject) => setTimeout(() => reject(new Error('Close timeout')), 10000))
+                                ]).catch(e => console.warn(`[WATCHDOG] [${name}] Error closing idle client:`, e.message));
+                            } catch (e) {}
+                        }
+                        clients.delete(name);
+                        qrCodes.delete(name);
+                        continue;
+                    }
+                } else {
+                    qrReadyTimestamps.delete(name);
+                }
+                // -----------------------------------
+
                 const restartableStates = [
                     'disconnected', 'closed', 'browserclose', 'failed', 
                     'qrreaderror', 'autoclose', 'offline', 'error'
