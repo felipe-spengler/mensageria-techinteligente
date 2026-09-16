@@ -260,6 +260,17 @@ async function initWhatsApp(sessionName) {
 
         clients.set(sessionName, client);
         console.log(`[${sessionName}] WhatsApp Client Ready (Waiting for Scan or Connected)!`);
+        
+        // Handle state changes that statusFind might miss (e.g. in newer wppconnect versions)
+        client.onStateChange((state) => {
+            console.log(`[${sessionName}] onStateChange:`, state);
+            if (state === 'CONNECTED' || state === 'SYNCING') {
+                connectionStatuses.set(sessionName, 'connected');
+                notifyLaravelStatus(sessionName, 'connected');
+                qrReadyTimestamps.delete(sessionName);
+            }
+        });
+
         startWorker(sessionName);
     } catch (err) {
         console.error(`[${sessionName}] Error creating client:`, err.message);
@@ -356,6 +367,18 @@ function startSessionWatchdog() {
                         }
                         clients.delete(name);
                         qrCodes.delete(name);
+                        
+                        // AUTO-CLEANUP TO AVOID STALE SESSION ON NEXT START
+                        try {
+                            const tokenPath = path.join(__dirname, 'tokens', name);
+                            if (fs.existsSync(tokenPath)) {
+                                fs.rmSync(tokenPath, { recursive: true, force: true });
+                                console.log(`[WATCHDOG] Cleaned up tokens folder for ${name} to allow fresh start`);
+                            }
+                        } catch (err) {
+                            console.error(`[WATCHDOG] Failed to clean tokens for ${name}:`, err.message);
+                        }
+                        
                         continue;
                     }
                 } else {
