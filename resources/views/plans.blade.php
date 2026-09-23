@@ -38,7 +38,7 @@
         <!-- Desktop Menu -->
         <div class="flex gap-8 text-sm font-medium text-gray-400 items-center">
             <a href="#planos" class="hover:text-white transition">Preços</a>
-            <a href="{{ route('docs') }}" class="hover:text-white transition">Documentação</a>
+            <a href="{{ route('docs') }}" class="hover:text-white transition hidden md:block">Documentação</a>
             @auth
                 <a href="/admin" class="bg-blue-600 text-white px-6 py-2 rounded-full text-sm font-bold hover:bg-blue-500 transition shadow-lg shadow-blue-500/20">Meu Painel</a>
             @else
@@ -85,8 +85,8 @@
         <div id="planos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 scroll-mt-24">
             @foreach($tiers as $index => $tier)
                 @php
-                    $textPlan = $plans->filter(fn($p) => str_starts_with($p->name, $tier['name']) && $p->type === 'text')->first();
-                    $mediaPlan = $plans->filter(fn($p) => str_starts_with($p->name, $tier['name']) && $p->type === 'media')->first();
+                    $textPlan = isset($plans) ? $plans->filter(fn($p) => str_starts_with($p->name, $tier['name']) && $p->type === 'text')->first() : null;
+                    $mediaPlan = isset($plans) ? $plans->filter(fn($p) => str_starts_with($p->name, $tier['name']) && $p->type === 'media')->first() : null;
                 @endphp
 
                 <div class="group relative {{ $index == 1 ? 'lg:scale-105 z-10' : '' }}">
@@ -106,40 +106,40 @@
                         </div>
 
                         <!-- Opção: Só Texto -->
-                        <div class="plan-details-text transition-all duration-300 flex flex-col flex-1">
+                        <div class="plan-details-text transition-all duration-300 flex flex-col">
                             <div class="mb-8">
-                                <div class="text-4xl font-black text-white">R$ {{ number_format($textPlan->price ?? 0, 0) }}</div>
-                                <div class="text-[11px] text-gray-400 mt-1">R$ {{ number_format(($textPlan->price ?? 0) / $tier['limit'], 2, ',', '.') }} por mensagem</div>
+                                <div class="text-4xl font-black text-white">R$ {{ number_format($textPlan?->price ?? 0, 0) }}</div>
+                                <div class="text-[11px] text-gray-400 mt-1">R$ {{ number_format(($textPlan?->price ?? 0) / $tier['limit'], 2, ',', '.') }} por mensagem</div>
                             </div>
                             
-                            <a href="/purchase/{{ $textPlan->id ?? '#' }}" class="block w-full py-3.5 rounded-2xl text-center text-xs font-black bg-blue-600 hover:bg-blue-500 text-white transition-all duration-300 shadow-lg shadow-blue-500/25">ASSINAR AGORA</a>
+                            <a href="/purchase/{{ $textPlan?->id ?? '#' }}" class="block w-full py-3.5 rounded-2xl text-center text-xs font-black bg-blue-600 hover:bg-blue-500 text-white transition-all duration-300 shadow-lg shadow-blue-500/25">ASSINAR AGORA</a>
                         </div>
 
                         <!-- Opção: Com Mídia -->
-                        <div class="plan-details-media hidden transition-all duration-300 flex flex-col flex-1">
+                        <div class="plan-details-media transition-all duration-300 flex-col" style="display: none;">
                             <div class="mb-8">
-                                <div class="text-4xl font-black text-white">R$ {{ number_format($mediaPlan->price ?? 0, 0) }}</div>
-                                <div class="text-[11px] text-gray-400 mt-1">R$ {{ number_format(($mediaPlan->price ?? 0) / $tier['limit'], 2, ',', '.') }} por mensagem</div>
+                                <div class="text-4xl font-black text-white">R$ {{ number_format($mediaPlan?->price ?? 0, 0) }}</div>
+                                <div class="text-[11px] text-gray-400 mt-1">R$ {{ number_format(($mediaPlan?->price ?? 0) / $tier['limit'], 2, ',', '.') }} por mensagem</div>
                             </div>
                             
-                            <a href="/purchase/{{ $mediaPlan->id ?? '#' }}" class="block w-full py-3.5 rounded-2xl text-center text-xs font-black bg-purple-600 hover:bg-purple-500 text-white transition-all duration-300 shadow-lg shadow-purple-600/25">ASSINAR AGORA</a>
+                            <a href="/purchase/{{ $mediaPlan?->id ?? '#' }}" class="block w-full py-3.5 rounded-2xl text-center text-xs font-black bg-purple-600 hover:bg-purple-500 text-white transition-all duration-300 shadow-lg shadow-purple-600/25">ASSINAR AGORA</a>
                         </div>
 
-                        <ul class="mt-8 space-y-3.5 flex-1 px-1 border-t border-white/5 pt-6">
+                        <ul class="mt-8 space-y-3.5 px-1 border-t border-white/5 pt-6 flex-grow">
                             <li class="flex items-center gap-3 text-xs text-gray-400">
-                                <svg class="w-4.5 h-4.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <svg class="w-4.5 h-4.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                                 Setup instantâneo via API
                             </li>
                             <li class="flex items-center gap-3 text-xs text-gray-400">
-                                <svg class="w-4.5 h-4.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <svg class="w-4.5 h-4.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                                 Webhooks de status real
                             </li>
                             <li class="flex items-center gap-3 text-xs text-gray-400">
-                                <svg class="w-4.5 h-4.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <svg class="w-4.5 h-4.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                                 Dashboard de consumo completo
                             </li>
-                            <li class="plan-feature-media hidden flex items-center gap-3 text-xs text-gray-400">
-                                <svg class="w-4.5 h-4.5 text-purple-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            <li class="plan-feature-media items-center gap-3 text-xs text-gray-400" style="display: none;">
+                                <svg class="w-4.5 h-4.5 text-purple-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                                 Imagens, PDFs e arquivos via API
                             </li>
                         </ul>
@@ -166,16 +166,16 @@
                 btnText.className = "px-6 py-2.5 rounded-xl text-xs font-black transition-all duration-300 bg-blue-600 text-white shadow-lg shadow-blue-500/20";
                 btnMedia.className = "px-6 py-2.5 rounded-xl text-xs font-black transition-all duration-300 text-gray-400 hover:text-white";
                 
-                detailsText.forEach(el => el.classList.remove('hidden'));
-                detailsMedia.forEach(el => el.classList.add('hidden'));
-                featuresMedia.forEach(el => el.classList.add('hidden'));
+                detailsText.forEach(el => el.style.display = 'flex');
+                detailsMedia.forEach(el => el.style.display = 'none');
+                featuresMedia.forEach(el => el.style.display = 'none');
             } else {
                 btnMedia.className = "px-6 py-2.5 rounded-xl text-xs font-black transition-all duration-300 bg-purple-600 text-white shadow-lg shadow-purple-500/20";
                 btnText.className = "px-6 py-2.5 rounded-xl text-xs font-black transition-all duration-300 text-gray-400 hover:text-white";
                 
-                detailsText.forEach(el => el.classList.add('hidden'));
-                detailsMedia.forEach(el => el.classList.remove('hidden'));
-                featuresMedia.forEach(el => el.classList.remove('hidden'));
+                detailsText.forEach(el => el.style.display = 'none');
+                detailsMedia.forEach(el => el.style.display = 'flex');
+                featuresMedia.forEach(el => el.style.display = 'flex');
             }
         }
     </script>
