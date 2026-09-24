@@ -20,9 +20,8 @@ return new class extends Migration
         DB::table('settings')->insert([
             ['key' => 'wpp_delay_minutes', 'value' => '2', 'group' => 'warming_up'],
             ['key' => 'wpp_max_hourly_msgs', 'value' => '30', 'group' => 'warming_up'],
-            ['key' => 'asaas_api_key', 'value' => '', 'group' => 'asaas'],
-            ['key' => 'asaas_mode', 'value' => 'sandbox', 'group' => 'asaas'],
-            ['key' => 'asaas_webhook_token', 'value' => '', 'group' => 'asaas'],
+            ['key' => 'mp_access_token', 'value' => '', 'group' => 'mercadopago'],
+            ['key' => 'mp_enabled', 'value' => 'true', 'group' => 'mercadopago'],
             ['key' => 'wpp_bridge_key', 'value' => Str::random(32), 'group' => 'bridge'],
         ]);
     }

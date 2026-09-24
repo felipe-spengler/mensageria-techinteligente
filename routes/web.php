@@ -31,6 +31,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/admin/logs', [\App\Http\Controllers\AdminController::class, 'logs'])->name('admin.logs');
         Route::get('/admin/whatsapp', [\App\Http\Controllers\AdminController::class, 'whatsapp'])->name('admin.whatsapp');
         Route::get('/admin/tester', [\App\Http\Controllers\AdminController::class, 'tester'])->name('admin.tester');
+        Route::get('/admin/enviar', [\App\Http\Controllers\AdminController::class, 'enviar'])->name('admin.enviar');
         Route::post('/admin/whatsapp/start', [\App\Http\Controllers\AdminController::class, 'startWhatsapp'])->name('admin.whatsapp.start');
         Route::post('/admin/whatsapp/logout', [\App\Http\Controllers\AdminController::class, 'logoutWhatsapp'])->name('admin.whatsapp.logout');
         Route::post('/admin/whatsapp/schedule', [\App\Http\Controllers\AdminController::class, 'updateSchedule'])->name('admin.whatsapp.schedule');
@@ -47,12 +48,12 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Rotas Administrativas (Apenas Admin)
-    Route::post('/admin/save-asaas', [\App\Http\Controllers\AdminController::class, 'saveAsaas'])->name('admin.asaas.save');
+    Route::post('/admin/save-mercadopago', [\App\Http\Controllers\AdminController::class, 'saveMercadoPago'])->name('admin.mercadopago.save');
     Route::get('/admin/financeiro', [\App\Http\Controllers\AdminController::class, 'financeiro'])->name('admin.financeiro');
     Route::get('/admin/usuarios/progresso', [\App\Http\Controllers\AdminController::class, 'usersProgress'])->name('admin.users_progress');
     Route::post('/admin/usuarios/renovar/{user}', [\App\Http\Controllers\AdminController::class, 'renewUserPlan'])->name('admin.users.renew');
     Route::post('/admin/financeiro', [\App\Http\Controllers\AdminController::class, 'saveFinanceiro'])->name('admin.financeiro.save');
-    Route::post('/admin/financeiro/test', [\App\Http\Controllers\AdminController::class, 'testAsaas'])->name('admin.financeiro.test');
+    Route::post('/admin/financeiro/test', [\App\Http\Controllers\AdminController::class, 'testMercadoPago'])->name('admin.financeiro.test');
 
     // Plans
     Route::get('/admin/plans', [\App\Http\Controllers\AdminController::class, 'plans'])->name('admin.plans');

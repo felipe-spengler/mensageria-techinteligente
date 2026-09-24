@@ -139,10 +139,8 @@ class DefaultDataSeeder extends Seeder
 
         // Default Settings - Try to load from ENV if available (e.g. for first deploy)
         $settings = [
-            ['key' => 'asaas_api_key', 'value' => env('ASAAS_API_KEY'), 'group' => 'asaas'],
-            ['key' => 'asaas_mode', 'value' => env('ASAAS_MODE', 'sandbox'), 'group' => 'asaas'],
-            ['key' => 'asaas_enabled', 'value' => env('ASAAS_ENABLED', 'true'), 'group' => 'asaas'],
-            ['key' => 'asaas_webhook_token', 'value' => env('ASAAS_WEBHOOK_TOKEN', 'wh_' . bin2hex(random_bytes(16))), 'group' => 'asaas'],
+            ['key' => 'mp_access_token', 'value' => env('MP_ACCESS_TOKEN'), 'group' => 'mercadopago'],
+            ['key' => 'mp_enabled', 'value' => env('MP_ENABLED', 'true'), 'group' => 'mercadopago'],
             ['key' => 'wpp_bridge_key', 'value' => env('WPP_BRIDGE_INTERNAL_KEY', '7caeb868-3d08-4761-b126-4f601cd05f7a'), 'group' => 'bridge'],
             ['key' => 'webhook_token', 'value' => env('WEBHOOK_TOKEN', bin2hex(random_bytes(16))), 'group' => 'security'],
         ];

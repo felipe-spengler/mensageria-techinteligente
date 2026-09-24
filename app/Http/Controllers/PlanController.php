@@ -53,55 +53,43 @@ class PlanController extends Controller
             $plan = \App\Models\Plan::find($request->plan_id);
             $txid = 'PLAN-' . strtoupper(\Illuminate\Support\Str::random(8));
 
-            // Tenta criar cobrança PIX no Asaas
-            $asaasApiKey = \App\Helpers\SettingsHelper::get('asaas_api_key');
-            $asaasEnabled = \App\Helpers\SettingsHelper::get('asaas_enabled', 'false') === 'true';
-            $asaasMode = \App\Helpers\SettingsHelper::get('asaas_mode', 'sandbox');
+            // Tenta criar cobrança PIX no Mercado Pago
+            $mpAccessToken = \App\Helpers\SettingsHelper::get('mp_access_token');
+            $mpEnabled = \App\Helpers\SettingsHelper::get('mp_enabled', 'false') === 'true';
             
             $pixPayload = null;
             $qrCodeImage = null;
 
-            if ($asaasEnabled && $asaasApiKey) {
+            if ($mpEnabled && $mpAccessToken) {
                 try {
-                    $baseUrl = $asaasMode === 'production' 
-                        ? 'https://www.asaas.com/api/v3' 
-                        : 'https://sandbox.asaas.com/api/v3';
+                    $payload = [
+                        "transaction_amount" => (float)$plan->price,
+                        "payment_method_id" => "pix",
+                        "description" => 'Plano ' . $plan->name,
+                        "external_reference" => $txid,
+                        "notification_url" => url('/api/v1/webhook/mercadopago'),
+                        "payer" => [
+                            "email" => $user->email,
+                            "first_name" => $user->name,
+                            "identification" => ["type" => "CPF", "number" => "11111111111"], // Preenchimento obrigatório genérico caso o MP exija
+                        ]
+                    ];
 
-                    $customerId = $this->getOrCreateAsaasCustomer($user, $asaasApiKey, $baseUrl);
-                    
-                    if ($customerId) {
-                        $response = \Illuminate\Support\Facades\Http::withHeaders([
-                            'access_token' => $asaasApiKey,
-                            'Content-Type' => 'application/json',
-                        ])->post("{$baseUrl}/payments", [
-                            'customer' => $customerId,
-                            'billingType' => 'PIX',
-                            'value' => $plan->price,
-                            'dueDate' => now()->addDay()->format('Y-m-d'),
-                            'description' => 'Plano ' . $plan->name,
-                            'externalReference' => $txid,
-                        ]);
+                    $response = \Illuminate\Support\Facades\Http::withHeaders([
+                        'Authorization' => 'Bearer ' . $mpAccessToken,
+                        'X-Idempotency-Key' => uniqid(),
+                    ])->post("https://api.mercadopago.com/v1/payments", $payload);
 
-                        if ($response->successful()) {
-                            $payment = $response->json();
-                            
-                            $qrResponse = \Illuminate\Support\Facades\Http::withHeaders([
-                                'access_token' => $asaasApiKey,
-                            ])->get("{$baseUrl}/payments/{$payment['id']}/pixQrCode");
-
-                            if ($qrResponse->successful()) {
-                                $qrData = $qrResponse->json();
-                                $pixPayload = $qrData['payload'] ?? null;
-                                $qrCodeImage = $qrData['encodedImage'] ?? null;
-                            }
-                        } else {
-                            \Illuminate\Support\Facades\Log::warning('Asaas Payment Error: ' . $response->body());
-                        }
+                    if ($response->successful()) {
+                        $payment = $response->json();
+                        
+                        $pixPayload = $payment['point_of_interaction']['transaction_data']['qr_code'] ?? null;
+                        $qrCodeImage = $payment['point_of_interaction']['transaction_data']['qr_code_base64'] ?? null;
                     } else {
-                        \Illuminate\Support\Facades\Log::warning('Asaas Customer creation failed for user: ' . $user->email);
+                        \Illuminate\Support\Facades\Log::warning('Mercado Pago Payment Error: ' . $response->body());
                     }
                 } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error('Erro ao criar cobrança Asaas: ' . $e->getMessage());
+                    \Illuminate\Support\Facades\Log::error('Erro ao criar cobrança Mercado Pago: ' . $e->getMessage());
                 }
             }
 
@@ -122,7 +110,7 @@ class PlanController extends Controller
                 'txid' => $txid,
                 'pix_payload' => $pixPayload,
                 'qr_code_image' => $qrCodeImage,
-                'qr_code' => $pixPayload ?? 'Aguardando configuração do Asaas'
+                'qr_code' => $pixPayload ?? 'Aguardando configuração do Mercado Pago'
             ]);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Erro no processPurchase: ' . $e->getMessage());
@@ -131,56 +119,5 @@ class PlanController extends Controller
                 'error' => 'Ocorreu um erro interno: ' . $e->getMessage()
             ], 500);
         }
-    }
-
-    private function getOrCreateAsaasCustomer($user, $asaasApiKey, $baseUrl)
-    {
-        try {
-            // 1. Busca cliente existente por email
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'access_token' => $asaasApiKey,
-            ])->get("{$baseUrl}/customers", [
-                'email' => $user->email,
-            ]);
-
-            if ($response->successful()) {
-                $customers = $response->json();
-                if (!empty($customers['data'])) {
-                    return $customers['data'][0]['id'];
-                }
-            }
-
-            // 2. Prepara CPF/CNPJ (Asaas exige 11 ou 14 dígitos)
-            $rawPhone = preg_replace('/[^0-9]/', '', $user->phone);
-            // Se o telefone tiver 11 dígitos, usamos como CPF "fake" (temporário)
-            // Se não, deixamos em branco e deixamos o Asaas reclamar ou usamos um placeholder
-            $cpfCnpj = (strlen($rawPhone) === 11 || strlen($rawPhone) === 14) ? $rawPhone : null;
-
-            // 3. Cria novo cliente
-            $payload = [
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-            ];
-
-            if ($cpfCnpj) {
-                $payload['cpfCnpj'] = $cpfCnpj;
-            }
-
-            $createResponse = \Illuminate\Support\Facades\Http::withHeaders([
-                'access_token' => $asaasApiKey,
-                'Content-Type' => 'application/json',
-            ])->post("{$baseUrl}/customers", $payload);
-
-            if ($createResponse->successful()) {
-                return $createResponse->json()['id'];
-            }
-
-            \Illuminate\Support\Facades\Log::warning('Asaas Customer creation failed: ' . $createResponse->body());
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Asaas getOrCreateAsaasCustomer exception: ' . $e->getMessage());
-        }
-
-        return null;
     }
 }

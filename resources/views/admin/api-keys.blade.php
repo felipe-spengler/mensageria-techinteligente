@@ -3,7 +3,7 @@
 @section('title', 'Pagamentos & API')
 
 @section('content')
-    <div class="flex flex-col space-y-12" x-data="{ asaasModal: false, docsModal: false, keyModal: false }">
+    <div class="flex flex-col space-y-12" x-data="{ mpModal: false, docsModal: false, keyModal: false }">
         
         <!-- Toolbar -->
         <div class="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -13,9 +13,9 @@
             </div>
             <div class="flex items-center space-x-4">
                 @if(auth()->user()->isAdmin())
-                    <button @click="asaasModal = true" class="flex items-center space-x-2 bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 px-6 py-3 rounded-2xl text-xs font-bold hover:bg-indigo-600/20 transition">
+                    <button @click="mpModal = true" class="flex items-center space-x-2 bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 px-6 py-3 rounded-2xl text-xs font-bold hover:bg-indigo-600/20 transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
-                        <span>Configurar Asaas Global</span>
+                        <span>Configurar MP Global</span>
                     </button>
                     <button @click="keyModal = true" class="flex items-center space-x-2 bg-blue-600/10 border border-blue-500/20 text-blue-400 px-6 py-3 rounded-2xl text-xs font-bold hover:bg-blue-600/20 transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
@@ -103,26 +103,19 @@
             @endif
         </div>
 
-        <!-- Asaas Modal -->
-        <div x-show="asaasModal" class="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-dash-950/80 backdrop-blur-sm" x-cloak>
-            <div class="glass w-full max-w-lg rounded-[40px] p-10 border-dash-700 shadow-3xl" @click.away="asaasModal = false">
+        <!-- MP Modal -->
+        <div x-show="mpModal" class="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-dash-950/80 backdrop-blur-sm" x-cloak>
+            <div class="glass w-full max-w-lg rounded-[40px] p-10 border-dash-700 shadow-3xl" @click.away="mpModal = false">
                 <div class="flex items-center justify-between mb-8">
-                    <h3 class="text-xl font-bold text-white">Configuração Asaas Master</h3>
-                    <button @click="asaasModal = false" class="text-gray-500 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l18 18"></path></svg></button>
+                    <h3 class="text-xl font-bold text-white">Configuração Mercado Pago Master</h3>
+                    <button @click="mpModal = false" class="text-gray-500 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l18 18"></path></svg></button>
                 </div>
                 
-                <form action="{{ route('admin.asaas.save') }}" method="POST" class="space-y-6">
+                <form action="{{ route('admin.mercadopago.save') }}" method="POST" class="space-y-6">
                     @csrf
                     <div>
-                        <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Asaas API Key (Produção ou Sandbox)</label>
-                        <input type="password" name="asaas_key" value="{{ \App\Models\Setting::getValue('asaas_api_key') }}" required class="w-full bg-dash-950 border border-white/5 rounded-2xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Ambiente</label>
-                        <select name="asaas_mode" class="w-full bg-dash-950 border border-white/5 rounded-2xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none transition-all">
-                            <option value="sandbox" {{ \App\Models\Setting::getValue('asaas_mode') === 'sandbox' ? 'selected' : '' }}>Sandbox (Testes)</option>
-                            <option value="production" {{ \App\Models\Setting::getValue('asaas_mode') === 'production' ? 'selected' : '' }}>Produção (Real)</option>
-                        </select>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Access Token do Mercado Pago</label>
+                        <input type="password" name="mp_access_token" value="{{ \App\Models\Setting::getValue('mp_access_token') }}" required class="w-full bg-dash-950 border border-white/5 rounded-2xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
                     </div>
                     <button type="submit" class="w-full btn-grad py-5 rounded-3xl font-bold text-sm shadow-xl shadow-blue-900/30">Salvar Configurações</button>
                 </form>

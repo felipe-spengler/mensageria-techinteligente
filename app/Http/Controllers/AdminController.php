@@ -84,6 +84,11 @@ class AdminController extends Controller
         return view('admin.tester');
     }
 
+    public function enviar()
+    {
+        return view('admin.enviar');
+    }
+
     /**
      * API Keys & Payments Page
      */
@@ -311,23 +316,21 @@ class AdminController extends Controller
     }
 
     /**
-     * Save Global Asaas Settings
+     * Save Global Mercado Pago Settings
      */
-    public function saveAsaas(Request $request)
+    public function saveMercadoPago(Request $request)
     {
         if (!Auth::user()->isAdmin()) {
             abort(403);
         }
 
         $request->validate([
-            'asaas_key' => 'required|string',
-            'asaas_mode' => 'required|in:sandbox,production',
+            'mp_access_token' => 'required|string',
         ]);
 
-        Setting::setValue('asaas_api_key', $request->asaas_key, 'asaas');
-        Setting::setValue('asaas_mode', $request->asaas_mode, 'asaas');
+        Setting::setValue('mp_access_token', $request->mp_access_token, 'mercadopago');
 
-        return back()->with('success', 'Configurações de Asaas salvas com sucesso!');
+        return back()->with('success', 'Configurações de Mercado Pago salvas com sucesso!');
     }
     public function updateSchedule(Request $request)
     {
@@ -377,48 +380,36 @@ class AdminController extends Controller
             abort(403);
         }
         $request->validate([
-            'asaas_key' => 'nullable|string',
-            'asaas_mode' => 'required|in:sandbox,production',
-            'asaas_webhook_token' => 'nullable|string',
+            'mp_access_token' => 'nullable|string',
         ]);
 
-        Setting::setValue('asaas_api_key', $request->asaas_key ?? '', 'asaas');
-        Setting::setValue('asaas_mode', $request->asaas_mode, 'asaas');
-        Setting::setValue('asaas_enabled', $request->has('asaas_enabled') ? 'true' : 'false', 'asaas');
-        
-        if ($request->asaas_webhook_token) {
-            Setting::setValue('asaas_webhook_token', $request->asaas_webhook_token, 'asaas');
-        }
+        Setting::setValue('mp_access_token', $request->mp_access_token ?? '', 'mercadopago');
+        Setting::setValue('mp_enabled', $request->has('mp_enabled') ? 'true' : 'false', 'mercadopago');
 
         return back()->with('success', 'Configurações financeiras salvas com sucesso!');
     }
 
-    public function testAsaas()
+    public function testMercadoPago()
     {
         if (!Auth::user()->isAdmin()) {
             abort(403);
         }
-        $key = Setting::getValue('asaas_api_key');
-        $mode = Setting::getValue('asaas_mode', 'sandbox');
+        $key = Setting::getValue('mp_access_token');
 
         if (!$key) {
-            return back()->with('error', 'Configure a API Key antes de testar.');
+            return back()->with('error', 'Configure o Access Token antes de testar.');
         }
 
         try {
-            $baseUrl = $mode === 'production' 
-                ? 'https://www.asaas.com/api/v3' 
-                : 'https://sandbox.asaas.com/api/v3';
-
             $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'access_token' => $key,
-            ])->get("{$baseUrl}/index/stats");
+                'Authorization' => "Bearer {$key}",
+            ])->get("https://api.mercadopago.com/users/me");
 
             if ($response->successful()) {
-                return back()->with('success', 'Conexão com Asaas estabelecida com sucesso! (Conta Ativa)');
+                return back()->with('success', 'Conexão com Mercado Pago estabelecida com sucesso! (Conta Ativa)');
             }
 
-            $error = $response->json()['errors'][0]['description'] ?? 'Erro desconhecido na API do Asaas.';
+            $error = $response->json()['message'] ?? 'Erro desconhecido na API do Mercado Pago.';
             return back()->with('error', 'Falha na conexão: ' . $error);
 
         } catch (\Exception $e) {

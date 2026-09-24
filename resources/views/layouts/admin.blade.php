@@ -109,6 +109,11 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                         <span class="text-sm font-medium">Conectar WhatsApp</span>
                     </a>
+
+                    <a href="{{ route('admin.enviar') }}" class="flex items-center space-x-3 p-3 rounded-xl {{ request()->is('admin/enviar*') ? 'bg-fuchsia-600 text-white shadow-lg shadow-fuchsia-900/20' : 'hover:bg-dash-800 text-gray-400' }}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                        <span class="text-sm font-medium">Disparo Manual</span>
+                    </a>
                     @endauth
 
                     <a href="{{ route('docs') }}" class="flex items-center space-x-3 p-3 rounded-xl {{ request()->is('documentacao*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/20' : 'hover:bg-dash-800 text-gray-400' }}">
