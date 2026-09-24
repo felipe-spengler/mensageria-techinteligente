@@ -118,7 +118,7 @@ class MessageController extends Controller
         ]);
 
         // Push to Redis for Node.js worker
-        $this->pushToQueue($log);
+        $this->pushToQueue($log, $instance);
 
         $responsePayload = [
             'success' => true,
@@ -263,7 +263,7 @@ class MessageController extends Controller
         }
     }
 
-    private function pushToQueue($log)
+    private function pushToQueue($log, $instance = null)
     {
         try {
             // O número já vem formatado do controller
@@ -271,7 +271,7 @@ class MessageController extends Controller
 
             $redis = \Illuminate\Support\Facades\Redis::connection();
             
-            $instance = \App\Models\WhatsappInstance::where('user_id', $log->apiKey->user_id)->first();
+            $instance = $instance ?? \App\Models\WhatsappInstance::where('user_id', $log->user_id ?? \App\Models\ApiKey::find($log->api_key_id)?->user_id)->first();
             
             if (!$instance) {
                 $log->update([
