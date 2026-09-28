@@ -89,9 +89,18 @@ class MessageController extends Controller
 
             // 1. Check if trying to send Media but plan is only Text
 
-            // 2. Check message limit
+            // 2. Check message limit based on cycle start (to avoid issues if updated_at changes manually)
+            $cycleStart = $apiKey->updated_at;
+            if ($apiKey->expires_at && $apiKey->plan && $apiKey->plan->duration_days > 0) {
+                // Se temos uma data de expiração, o ciclo começou há "duration_days" atrás dessa data.
+                $calculatedStart = $apiKey->expires_at->copy()->subDays($apiKey->plan->duration_days);
+                // Usamos a maior data (mais recente) entre a calculada e o fallback,
+                // mas na real a calculada é a mais confiável para não ser afetada por updates manuais.
+                $cycleStart = $calculatedStart;
+            }
+
             $messageCount = MessageLog::where('api_key_id', $apiKey->id)
-                ->where('created_at', '>=', $apiKey->updated_at)
+                ->where('created_at', '>=', $cycleStart)
                 ->count();
 
             if ($apiKey->plan->message_limit > 0 && $messageCount >= $apiKey->plan->message_limit) {
