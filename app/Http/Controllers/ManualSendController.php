@@ -209,7 +209,19 @@ class ManualSendController extends Controller
             [$response, $url] = $this->requestBridge('qrcode/' . $instance->session_name);
             
             if ($response->status() === 404) {
-                return response('QR Code not ready. Status: ' . ($response->json()['sessionStatus'] ?? 'unknown'), 404);
+                $sessionStatus = $response->json()['sessionStatus'] ?? 'unknown';
+                $deadStates = ['OFFLINE', 'DISCONNECTED', 'BROWSERCLOSE', 'UNLAUNCHED', 'NOT_FOUND', 'UNKNOWN'];
+                
+                if (in_array(strtoupper($sessionStatus), $deadStates)) {
+                    try {
+                        $this->requestBridge('start/' . $instance->session_name, 'POST');
+                        $sessionStatus = 'initializing';
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error('Auto-start failed via QR', ['error' => $e->getMessage()]);
+                    }
+                }
+                
+                return response('QR Code not ready. Status: ' . $sessionStatus, 404);
             }
 
             return response($response->body(), 200)
@@ -230,6 +242,20 @@ class ManualSendController extends Controller
         try {
             [$response, $url] = $this->requestBridge('status/' . $instance->session_name);
             $payload = $response->json();
+            
+            $currentStatus = strtoupper($payload['status'] ?? 'OFFLINE');
+            $deadStates = ['OFFLINE', 'DISCONNECTED', 'BROWSERCLOSE', 'UNLAUNCHED', 'NOT_FOUND'];
+            
+            if (in_array($currentStatus, $deadStates)) {
+                try {
+                    $this->requestBridge('start/' . $instance->session_name, 'POST');
+                    $payload['status'] = 'INITIALIZING';
+                    $payload['auto_started'] = true;
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Auto-start failed', ['error' => $e->getMessage()]);
+                }
+            }
+            
             \Illuminate\Support\Facades\Log::debug('Bridge status payload', ['payload' => $payload]);
             return response()->json($payload);
         } catch (\Exception $e) {

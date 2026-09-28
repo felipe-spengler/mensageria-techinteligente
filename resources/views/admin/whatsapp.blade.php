@@ -201,6 +201,13 @@
                             this.status = newStatus;
                         }
                         
+                        // Auto-wake if the system put it to sleep or it's offline
+                        const deadStates = ['OFFLINE', 'DISCONNECTED', 'BROWSERCLOSE', 'UNLAUNCHED', 'NOT_FOUND'];
+                        if (deadStates.includes(this.status) && !this.loading) {
+                            console.log('Instance is dead/asleep. Auto-waking...');
+                            this.startConnection();
+                        }
+                        
                         if (this.status === 'QR_READY') {
                             await this.fetchQrCode();
                         } else {

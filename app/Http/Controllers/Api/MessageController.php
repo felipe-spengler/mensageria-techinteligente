@@ -156,9 +156,19 @@ class MessageController extends Controller
                     ], 200);
                 }
 
+                $deadStates = ['OFFLINE', 'DISCONNECTED', 'BROWSERCLOSE', 'UNLAUNCHED', 'NOT_FOUND', 'UNKNOWN'];
+                if (in_array(strtoupper($sessionStatus), $deadStates)) {
+                    try {
+                        $this->requestBridge('start/' . $instance->session_name, 'POST');
+                        $sessionStatus = 'initializing';
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error('Auto-start failed via API', ['error' => $e->getMessage()]);
+                    }
+                }
+
                 return response()->json([
                     'status' => strtolower($sessionStatus),
-                    'error' => 'QR Code not ready. Ensure instance is starting.',
+                    'error' => 'QR Code not ready. Ensure instance is starting or check back in a few seconds.',
                 ], 404);
             }
 
