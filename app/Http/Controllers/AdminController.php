@@ -262,6 +262,8 @@ class AdminController extends Controller
                     $newStatus = 'connected';
                 } elseif (str_contains($bridgeStatus, 'qr')) {
                     $newStatus = 'qr_ready';
+                } elseif (in_array($bridgeStatus, ['connecting', 'initializing'])) {
+                    $newStatus = 'connecting';
                 }
 
                 if ($instance->status !== $newStatus) {
