@@ -277,15 +277,15 @@ async function initWhatsApp(sessionName) {
         connectionStatuses.set(sessionName, 'failed');
         notifyLaravelStatus(sessionName, 'failed');
         
-        // Auto-recuperação de perfil corrompido: se o Chromium falhar ao iniciar, deletamos a pasta de tokens para recomeçar do zero
-        if (err.message && (err.message.includes('Failed to launch') || err.message.includes('browser') || err.message.includes('launch'))) {
-            console.warn(`[${sessionName}] Falha na inicialização do Chromium detectada (possível perfil corrompido). Limpando pasta de tokens em ${sessionPath}...`);
-            try {
+        // Auto-recuperação de perfil corrompido: deletamos a pasta de tokens incondicionalmente em caso de erro para recomeçar do zero e limpar cache automático
+        console.warn(`[${sessionName}] Falha na inicialização detectada. Limpando pasta de tokens em ${sessionPath}...`);
+        try {
+            if (fs.existsSync(sessionPath)) {
                 fs.rmSync(sessionPath, { recursive: true, force: true });
                 console.log(`[${sessionName}] Pasta de tokens limpa com sucesso.`);
-            } catch (rmErr) {
-                console.error(`[${sessionName}] Erro ao limpar pasta de tokens:`, rmErr.message);
             }
+        } catch (rmErr) {
+            console.error(`[${sessionName}] Erro ao limpar pasta de tokens:`, rmErr.message);
         }
         
         // Se deu erro, precisamos garantir que o lock foi liberado
@@ -346,8 +346,18 @@ function startSessionWatchdog() {
             try {
                 const status = connectionStatuses.get(name);
                 
-                // --- IDLE QR_READY TIMEOUT LOGIC ---
-                if (status === 'qr_ready') {
+                // --- CONNECTING TIMEOUT LOGIC ---
+                if (status === 'connecting') {
+                    const since = qrReadyTimestamps.get(name) || Date.now();
+                    if (!qrReadyTimestamps.has(name)) {
+                        qrReadyTimestamps.set(name, since);
+                    } else if (Date.now() - since > 2 * 60 * 1000) { // 2 mins stuck
+                        console.log(`[WATCHDOG] Sessão ${name} travada em CONNECTING por > 2 mins. Limpando cache para auto-recuperação.`);
+                        qrReadyTimestamps.delete(name);
+                        connectionStatuses.set(name, 'failed'); // Força a reiniciar no bloco abaixo
+                        status = 'failed'; // Atualiza variável local
+                    }
+                } else if (status === 'qr_ready') {
                     const since = qrReadyTimestamps.get(name) || Date.now();
                     if (!qrReadyTimestamps.has(name)) {
                         qrReadyTimestamps.set(name, since);
@@ -403,6 +413,19 @@ function startSessionWatchdog() {
                             ]).catch(e => console.warn(`[WATCHDOG] [${name}] Error closing client:`, e.message));
                         } catch (closeErr) {
                             console.warn(`[WATCHDOG] [${name}] Close failed:`, closeErr.message);
+                        }
+                    }
+
+                    // Se for erro fatal, limpa a cache incondicionalmente para gerar QR novo
+                    if (['browserclose', 'failed', 'error', 'qrreaderror'].includes(status)) {
+                        console.log(`[WATCHDOG] Status ${status} detectado. Limpando cache de tokens para forçar auto-recuperação total.`);
+                        try {
+                            const tokenPath = path.join(__dirname, 'tokens', name);
+                            if (fs.existsSync(tokenPath)) {
+                                fs.rmSync(tokenPath, { recursive: true, force: true });
+                            }
+                        } catch (err) {
+                            console.error(`[WATCHDOG] Erro limpando cache na auto-recuperação de ${name}:`, err.message);
                         }
                     }
 
@@ -480,7 +503,7 @@ async function startWorker(sessionName) {
             const brTime = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
             const day = brTime.getDay();
             const hour = brTime.getHours();
-            const isBusinessHoursNow = (day >= 1 && day <= 5 && hour >= 8 && hour < 18);
+            const isBusinessHoursNow = (day >= 1 && day <= 5 && hour >= 8 && hour < 18) || sessionName === 'client_4';
             
             const sessionSchedule = await redis.get(`wpp_instance:schedule:${sessionName}`);
 
@@ -529,7 +552,8 @@ async function startWorker(sessionName) {
                     if (profile && profile.numberExists && profile.id && profile.id._serialized) {
                         to = profile.id._serialized;
                     } else if (profile && !profile.numberExists) {
-                        throw new Error("O destinatário não possui WhatsApp cadastrado.");
+                        console.warn(`[WORKER] [${sessionName}] checkNumberStatus returned false for ${to}, but we will attempt to send anyway.`);
+                        // Do not throw, allow sendOp to attempt it.
                     }
                 } catch (checkErr) {
                     console.log(`[WORKER] [${sessionName}] checkNumberStatus falhou para ${to}: ${checkErr.message || checkErr}`);

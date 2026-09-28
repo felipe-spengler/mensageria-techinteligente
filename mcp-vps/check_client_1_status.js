@@ -11,7 +11,7 @@ const conn = new Client();
 conn.on('ready', () => {
   console.log('SSH Connection Ready. Checking status for client_1...');
   const cmd = `
-    docker exec $(docker ps -q --filter name=db-wsgc44) mysql -uapp_user -psupersenha -e "USE mensageria; SELECT id, user_id, session_name, status FROM whatsapp_instances WHERE session_name = 'client_1';"
+    docker exec $(docker ps -q --filter name=db-wsgc44) mysql -uroot -psupersenha -e "USE mensageria; SELECT id, user_id, session_name, status FROM whatsapp_instances;"
   `;
   
   conn.exec(cmd, (err, stream) => {

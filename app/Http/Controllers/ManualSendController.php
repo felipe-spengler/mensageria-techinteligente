@@ -244,7 +244,7 @@ class ManualSendController extends Controller
             $payload = $response->json();
             
             $currentStatus = strtoupper($payload['status'] ?? 'OFFLINE');
-            $deadStates = ['OFFLINE', 'DISCONNECTED', 'BROWSERCLOSE', 'UNLAUNCHED', 'NOT_FOUND'];
+            $deadStates = ['OFFLINE', 'DISCONNECTED', 'BROWSERCLOSE', 'UNLAUNCHED', 'NOT_FOUND', 'CONNECTING'];
             
             if (in_array($currentStatus, $deadStates)) {
                 try {

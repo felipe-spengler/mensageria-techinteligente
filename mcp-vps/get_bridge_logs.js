@@ -9,9 +9,11 @@ config({ path: path.join(__dirname, '.env') });
 
 const conn = new Client();
 conn.on('ready', () => {
-  console.log('SSH Connection Ready. Fetching bridge logs...');
+  console.log('SSH Connection Ready. Checking Bridge logs...');
   const cmd = `
-    docker logs --tail 200 $(docker ps -q --filter name=bridge-wsgc44)
+    CONTAINER_ID=$(docker ps -q --filter name=bridge-wsgc44)
+    echo "--- Bridge Container Logs (Last 100 lines) ---"
+    docker logs --tail 100 $CONTAINER_ID
   `;
   
   conn.exec(cmd, (err, stream) => {

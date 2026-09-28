@@ -208,7 +208,7 @@
                             this.startConnection();
                         }
                         
-                        if (this.status === 'QR_READY') {
+                        if (['QR_READY', 'INITIALIZING', 'CONNECTING', 'UNKNOWN', 'OFFLINE'].includes(this.status)) {
                             await this.fetchQrCode();
                         } else {
                             this.qrCode = null;
