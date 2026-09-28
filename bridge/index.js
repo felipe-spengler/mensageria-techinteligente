@@ -506,10 +506,11 @@ async function startWorker(sessionName) {
             const hour = brTime.getHours();
             const isBusinessHoursNow = (day >= 1 && day <= 5 && hour >= 8 && hour < 18) || sessionName === 'client_4';
             
-            const sessionSchedule = await redis.get(`wpp_instance:schedule:${sessionName}`);
+            // Determine effective schedule: Redis session schedule takes priority if present, otherwise fallback to message payload
+            const effectiveSchedule = sessionSchedule || message.schedule_type || 'full_time';
 
-            if ((message.schedule_type === 'business_hours' || sessionSchedule === 'business_hours') && !isBusinessHoursNow) {
-                console.log(`[WORKER] [${sessionName}] Outside business hours (Session or Message limit). Re-queuing and sleeping 1 min.`);
+            if (effectiveSchedule === 'business_hours' && !isBusinessHoursNow) {
+                console.log(`[WORKER] [${sessionName}] Outside business hours. Re-queuing and sleeping 1 min.`);
                 await redis.rpush(sessionKey, data[1]); // Put it back
                 await new Promise(resolve => setTimeout(resolve, 60000)); // Wait 1 min
                 continue;
