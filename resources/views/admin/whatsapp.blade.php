@@ -251,9 +251,8 @@
                             const blob = await res.blob();
                             this.qrCode = URL.createObjectURL(blob);
                         } else if (res.status === 404) {
-                            // Se o QR sumiu (404), pode ser que tenha acabado de conectar
-                            console.log('QR Code 404. Checking if connected...');
-                            this.refreshStatus();
+                            // Se 404 (QR ainda não pronto), apenas ignora e aguarda próximo intervalo de polling
+                            console.log('QR Code 404. Aguardando...');
                         }
                     } catch(e) { console.error('QR Error:', e.message); }
                 },
