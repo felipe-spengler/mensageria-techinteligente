@@ -297,6 +297,10 @@ class AdminController extends Controller
             \Illuminate\Support\Facades\Log::error('Error starting bridge session: ' . $e->getMessage());
         }
 
+        if (request()->wantsJson() || request()->ajax()) {
+            return response()->json(['status' => 'started']);
+        }
+
         return back()->with('success', 'Iniciando conexão...');
     }
 
