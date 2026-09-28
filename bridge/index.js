@@ -177,8 +177,8 @@ async function initWhatsApp(sessionName) {
 
         const client = await wppconnect.create({
             session: sessionName,
-            catchQR: (qrCode, asciiQR, attempt, urlCode) => {
-                const finalQr = qrCode || urlCode;
+            catchQR: (base64Qr, asciiQR, attempt, urlCode) => {
+                const finalQr = (typeof base64Qr === 'string' && base64Qr.startsWith('data:image')) ? base64Qr : (urlCode || base64Qr);
                 qrCodes.set(sessionName, finalQr);
                 connectionStatuses.set(sessionName, 'qr_ready');
                 console.log(`[${sessionName}] QR Code updated! Base64 len: ${finalQr ? finalQr.length : 0}`);
