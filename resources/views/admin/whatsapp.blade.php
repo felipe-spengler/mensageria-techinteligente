@@ -174,14 +174,19 @@
 
                 init() {
                     this.refreshStatus();
-                    this.pollingToken = setInterval(() => this.refreshStatus(), 5000);
+                    this.pollingToken = setInterval(() => {
+                        this.refreshStatus();
+                        if (this.status !== 'CONNECTED') {
+                            this.fetchQrCode();
+                        }
+                    }, 3000);
                     
                     // Auto-start if offline
                     setTimeout(() => {
                         if (this.status === 'OFFLINE' || this.status === 'DISCONNECTED') {
                             this.startConnection();
                         }
-                    }, 2000);
+                    }, 1000);
                 },
 
                 async refreshStatus() {
