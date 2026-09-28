@@ -177,10 +177,11 @@ async function initWhatsApp(sessionName) {
 
         const client = await wppconnect.create({
             session: sessionName,
-            catchQR: (base64Qr) => {
-                qrCodes.set(sessionName, base64Qr);
+            catchQR: (qrCode, asciiQR, attempt, urlCode) => {
+                const finalQr = qrCode || urlCode;
+                qrCodes.set(sessionName, finalQr);
                 connectionStatuses.set(sessionName, 'qr_ready');
-                console.log(`[${sessionName}] QR Code updated`);
+                console.log(`[${sessionName}] QR Code updated! Base64 len: ${finalQr ? finalQr.length : 0}`);
                 notifyLaravelStatus(sessionName, 'qr_ready');
             },
             statusFind: (status) => {
@@ -747,7 +748,7 @@ app.get('/qrcode/:session', (req, res) => {
     const qr = qrCodes.get(session);
     const status = connectionStatuses.get(session);
 
-    if (qr && status === 'qr_ready') {
+    if (qr) {
         const base64Data = qr.replace(/^data:image\/png;base64,/, "");
         const img = Buffer.from(base64Data, 'base64');
         res.writeHead(200, {
