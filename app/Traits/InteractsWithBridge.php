@@ -19,15 +19,21 @@ trait InteractsWithBridge
         return array_values(array_filter($urls));
     }
 
-    private function requestBridge(string $path)
+    private function requestBridge(string $path, string $method = 'GET', array $data = [])
     {
         $lastError = null;
 
         foreach ($this->buildBridgeUrls() as $base) {
             $url = rtrim($base, '/') . '/' . ltrim($path, '/');
             try {
-                Log::debug('Bridge request starting', ['path' => $path, 'url' => $url]);
-                $response = Http::timeout(30)->get($url);
+                Log::debug('Bridge request starting', ['path' => $path, 'url' => $url, 'method' => $method]);
+                
+                if (strtoupper($method) === 'POST') {
+                    $response = Http::timeout(30)->post($url, $data);
+                } else {
+                    $response = Http::timeout(30)->get($url, $data);
+                }
+                
                 Log::debug('Bridge request response', ['path' => $path, 'url' => $url, 'status' => $response->status()]);
                 
                 if ($response->successful()) {
