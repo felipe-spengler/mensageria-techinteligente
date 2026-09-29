@@ -250,7 +250,8 @@ async function initWhatsApp(sessionName) {
                     '--hide-scrollbars'
                 ]
             },
-            autoClose: false
+            autoClose: 0,
+            autoCloseMs: 0
         });
 
         // LIBERA O LOCK AGORA: O navegador já abriu, a CPU já "respirou".
