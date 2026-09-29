@@ -167,7 +167,7 @@
     <script>
         function whatsappManager() {
             return {
-                status: 'DISCONNECTED',
+                status: '{{ strtoupper($instance->status ?? "DISCONNECTED") }}',
                 qrCode: null,
                 loading: false,
                 pollingToken: null,
