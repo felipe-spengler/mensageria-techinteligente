@@ -695,12 +695,12 @@ async function startWorker(sessionName) {
                 }
             }
 
-            // Cooldown per-session: 5 seconds (more aggressive)
-            const nextSend = Math.floor(Date.now() / 1000) + 5;
+            // Cooldown per-session: 15 seconds (safe & reliable)
+            const nextSend = Math.floor(Date.now() / 1000) + 15;
             await redis.set(`wpp_worker:next_send:${sessionName}`, nextSend, 'EX', 60);
             
-            console.log(`[WORKER] [${sessionName}] Waiting 5s before next message... (Next at: ${nextSend})`);
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            console.log(`[WORKER] [${sessionName}] Waiting 15s before next message... (Next at: ${nextSend})`);
+            await new Promise(resolve => setTimeout(resolve, 15000));
 
         } catch (e) {
             console.error(`[WORKER] [${sessionName}] Loop error:`, e.message);
