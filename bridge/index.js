@@ -165,10 +165,10 @@ async function initWhatsApp(sessionName) {
             try {
                 const files = fs.readdirSync(sessionPath);
                 files.forEach(file => {
-                    if (file.startsWith('Singleton')) {
+                    if (file.startsWith('Singleton') || file.includes('Default')) {
                         try {
                             fs.unlinkSync(path.join(sessionPath, file));
-                            console.log(`[BOOT] [${sessionName}] Removed stale lock: ${file}`);
+                            console.log(`[BOOT] [${sessionName}] Removed stale file: ${file}`);
                         } catch (e) {}
                     }
                 });
@@ -508,6 +508,7 @@ async function startWorker(sessionName) {
             const isBusinessHoursNow = (day >= 1 && day <= 5 && hour >= 8 && hour < 18) || sessionName === 'client_4';
             
             // Determine effective schedule: Redis session schedule takes priority if present, otherwise fallback to message payload
+            let sessionSchedule = null;
             const effectiveSchedule = sessionSchedule || message.schedule_type || 'full_time';
 
             if (effectiveSchedule === 'business_hours' && !isBusinessHoursNow) {
