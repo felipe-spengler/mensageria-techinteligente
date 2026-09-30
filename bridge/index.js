@@ -114,6 +114,7 @@ const redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
 // Map to store multiple WhatsApp clients
 const clients = new Map();
 const qrCodes = new Map();
+const linkCodes = new Map(); // Mapa para os códigos de emparelhamento (Pairing Code)
 const connectionStatuses = new Map();
 const qrReadyTimestamps = new Map(); // Tracks how long a session is in qr_ready
 const sessionsStarting = new Set(); // Track sessions currently initializing
@@ -123,7 +124,7 @@ let isInitializingGlobal = false;
 // ─────────────────────────────────────────────────────────────────────────────
 // WHATSAPP INIT
 // ─────────────────────────────────────────────────────────────────────────────
-async function initWhatsApp(sessionName) {
+async function initWhatsApp(sessionName, phoneNumber = null) {
     const sessionPath = path.join(__dirname, 'tokens', sessionName);
     if (clients.has(sessionName)) {
         console.log(`[BOOT] Session ${sessionName} already exists.`);
@@ -177,6 +178,13 @@ async function initWhatsApp(sessionName) {
 
         const client = await wppconnect.create({
             session: sessionName,
+            ...(phoneNumber ? { phoneNumber } : {}),
+            catchLinkCode: (str) => {
+                console.log(`[${sessionName}] Pairing Code generated: ${str}`);
+                linkCodes.set(sessionName, str);
+                connectionStatuses.set(sessionName, 'code_ready');
+                notifyLaravelStatus(sessionName, 'code_ready');
+            },
             catchQR: (base64Qr, asciiQR, attempt, urlCode) => {
                 const finalQr = (typeof base64Qr === 'string' && base64Qr.startsWith('data:image')) ? base64Qr : (urlCode || base64Qr);
                 qrCodes.set(sessionName, finalQr);
@@ -291,7 +299,7 @@ async function initWhatsApp(sessionName) {
         setTimeout(() => {
             if (!clients.has(sessionName)) {
                 console.log(`[${sessionName}] Retrying initialization...`);
-                initWhatsApp(sessionName).catch(e => console.error(`[${sessionName}] Retry failed:`, e.message));
+                initWhatsApp(sessionName, phoneNumber).catch(e => console.error(`[${sessionName}] Retry failed:`, e.message));
             }
         }, 30000);
     }
@@ -427,6 +435,7 @@ function startSessionWatchdog() {
 
                     clients.delete(name);
                     qrCodes.delete(name);
+                    linkCodes.delete(name);
                     initWhatsApp(name);
                 }
             } catch (e) {
@@ -768,6 +777,30 @@ app.get('/qrcode/:session', (req, res) => {
     }
 });
 
+app.get('/code/:session', (req, res) => {
+    const session = req.params.session;
+    const code = linkCodes.get(session);
+    const status = connectionStatuses.get(session);
+
+    if (code) {
+        res.json({ status: 'success', code: code, sessionStatus: status });
+    } else {
+        res.status(404).json({ status: 'not_available', sessionStatus: status });
+    }
+});
+
+app.get('/code/:session', (req, res) => {
+    const session = req.params.session;
+    const code = linkCodes.get(session);
+    const status = connectionStatuses.get(session);
+
+    if (code) {
+        res.json({ status: 'success', code: code, sessionStatus: status });
+    } else {
+        res.status(404).json({ status: 'not_available', sessionStatus: status });
+    }
+});
+
 app.get('/host/:session', async (req, res) => {
     const session = req.params.session;
     const client = clients.get(session);
@@ -880,11 +913,14 @@ app.get('/status/:session', (req, res) => {
 
 app.post('/start/:session', async (req, res) => {
     const session = req.params.session;
+    const { phoneNumber } = req.body; // Pega o número se vier pelo JSON
+    
     if (clients.has(session)) {
         return res.json({ status: 'already_running', session });
     }
-    initWhatsApp(session); // async but we don't await full readiness
-    res.json({ status: 'initializing', session });
+    
+    initWhatsApp(session, phoneNumber); // async but we don't await full readiness
+    res.json({ status: 'initializing', session, method: phoneNumber ? 'pairing_code' : 'qrcode' });
 });
 
 app.post('/logout/:session', async (req, res) => {
@@ -908,12 +944,14 @@ app.post('/logout/:session', async (req, res) => {
             // SEMPRE limpa do mapa local, independente de sucesso no logout remoto
             clients.delete(session);
             qrCodes.delete(session);
+            linkCodes.delete(session);
             connectionStatuses.set(session, 'disconnected');
             res.json({ status: 'logged_out', session });
         }
     } else {
         connectionStatuses.set(session, 'disconnected');
         qrCodes.delete(session);
+        linkCodes.delete(session);
         res.json({ status: 'not_connected', session });
     }
 });
