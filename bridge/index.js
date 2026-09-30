@@ -279,16 +279,8 @@ async function initWhatsApp(sessionName) {
         connectionStatuses.set(sessionName, 'failed');
         notifyLaravelStatus(sessionName, 'failed');
         
-        // Auto-recuperação de perfil corrompido: deletamos a pasta de tokens incondicionalmente em caso de erro para recomeçar do zero e limpar cache automático
-        console.warn(`[${sessionName}] Falha na inicialização detectada. Limpando pasta de tokens em ${sessionPath}...`);
-        try {
-            if (fs.existsSync(sessionPath)) {
-                fs.rmSync(sessionPath, { recursive: true, force: true });
-                console.log(`[${sessionName}] Pasta de tokens limpa com sucesso.`);
-            }
-        } catch (rmErr) {
-            console.error(`[${sessionName}] Erro ao limpar pasta de tokens:`, rmErr.message);
-        }
+        // Auto-recuperação de perfil corrompido: evitamos deletar a pasta de tokens incondicionalmente para não desconectar o cliente
+        console.warn(`[${sessionName}] Falha na inicialização detectada. Preservando tokens e tentando novamente em breve...`);
         
         // Se deu erro, precisamos garantir que o lock foi liberado
         isInitializingGlobal = false;
@@ -418,8 +410,8 @@ function startSessionWatchdog() {
                         }
                     }
 
-                    // Se for erro fatal, limpa a cache incondicionalmente para gerar QR novo
-                    if (['browserclose', 'failed', 'error', 'qrreaderror'].includes(status)) {
+                    // Se for erro de autenticação ou QR, limpa a cache para gerar QR novo
+                    if (['qrreaderror', 'autoclose', 'auth_failure'].includes(status)) {
                         console.log(`[WATCHDOG] Status ${status} detectado. Limpando cache de tokens para forçar auto-recuperação total.`);
                         try {
                             const tokenPath = path.join(__dirname, 'tokens', name);
@@ -429,6 +421,8 @@ function startSessionWatchdog() {
                         } catch (err) {
                             console.error(`[WATCHDOG] Erro limpando cache na auto-recuperação de ${name}:`, err.message);
                         }
+                    } else {
+                        console.log(`[WATCHDOG] Status ${status} detectado. Preservando tokens e reiniciando a instância.`);
                     }
 
                     clients.delete(name);
@@ -653,12 +647,14 @@ async function startWorker(sessionName) {
                         }
                         
                         try {
-                            if (fs.existsSync(sessionPath)) {
-                                fs.rmSync(sessionPath, { recursive: true, force: true });
-                                console.log(`[WORKER] [${sessionName}] Pasta de tokens deletada com sucesso.`);
+                            // Em Invariant Violation, geralmente apenas remover o SingletonLock ajuda sem deslogar o cliente
+                            const singletonLock = path.join(sessionPath, 'SingletonLock');
+                            if (fs.existsSync(singletonLock)) {
+                                fs.unlinkSync(singletonLock);
+                                console.log(`[WORKER] [${sessionName}] SingletonLock deletado com sucesso para tentar recuperar Invariant Violation.`);
                             }
                         } catch (rmErr) {
-                            console.error(`[WORKER] [${sessionName}] Erro ao deletar pasta de tokens:`, rmErr.message);
+                            console.error(`[WORKER] [${sessionName}] Erro ao deletar SingletonLock:`, rmErr.message);
                         }
                     }
                 }

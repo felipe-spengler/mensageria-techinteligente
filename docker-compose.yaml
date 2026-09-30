@@ -122,7 +122,7 @@ services:
     restart: always
     stop_grace_period: 10s # give Node.js time to flush before SIGKILL
     volumes:
-      - ./bridge/tokens:/app/tokens
+      - bridge-tokens:/app/tokens
     depends_on:
       - redis
     shm_size: '1gb'
@@ -178,3 +178,4 @@ volumes:
   storage-data:
   db-data-v2:
   redis-data:
+  bridge-tokens:
