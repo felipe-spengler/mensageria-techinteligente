@@ -43,8 +43,7 @@ ARG WEBHOOK_URL
 
 WORKDIR /app
 
-COPY package.json ./
-COPY package-lock.json ./
+COPY package*.json ./
 
 RUN npm config set fund false && npm config set audit false && \
     npm install --silent --legacy-peer-deps --progress=false --no-audit || \
