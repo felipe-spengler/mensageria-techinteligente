@@ -605,7 +605,8 @@ async function startWorker(sessionName) {
                     try { fs.unlinkSync(mediaPath); } catch (e) {}
                 }
 
-                await notifyLaravel(message.log_id, 'sent');
+                // Notifica o Laravel em background (sem await) para não travar a fila se o servidor demorar a responder
+                notifyLaravel(message.log_id, 'sent').catch(e => console.error(`[WORKER] Erro notificação background:`, e.message));
                 // Salva no cache de deduplicação por 24 horas para evitar reenvios acidentais
                 await redis.set(dedupKey, '1', 'EX', 86400); 
                 
@@ -687,12 +688,12 @@ async function startWorker(sessionName) {
                 }
             }
 
-            // Cooldown per-session: 15 seconds (safe & reliable)
-            const nextSend = Math.floor(Date.now() / 1000) + 15;
+            // Cooldown per-session: 5 seconds (more aggressive)
+            const nextSend = Math.floor(Date.now() / 1000) + 5;
             await redis.set(`wpp_worker:next_send:${sessionName}`, nextSend, 'EX', 60);
             
-            console.log(`[WORKER] [${sessionName}] Waiting 15s before next message... (Next at: ${nextSend})`);
-            await new Promise(resolve => setTimeout(resolve, 15000));
+            console.log(`[WORKER] [${sessionName}] Waiting 5s before next message... (Next at: ${nextSend})`);
+            await new Promise(resolve => setTimeout(resolve, 5000));
 
         } catch (e) {
             console.error(`[WORKER] [${sessionName}] Loop error:`, e.message);
