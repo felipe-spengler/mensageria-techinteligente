@@ -232,6 +232,21 @@ class ManualSendController extends Controller
         }
     }
 
+    public function getBridgeCode(Request $request)
+    {
+        $user = Auth::user();
+        $instance = \App\Models\WhatsappInstance::where('user_id', $user->id)->first();
+        
+        if (!$instance) return response('No instance', 404);
+
+        try {
+            [$response, $url] = $this->requestBridge('code/' . $instance->session_name);
+            return response($response->body(), $response->status())->header('Content-Type', 'application/json');
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'offline', 'error' => $e->getMessage()], 503);
+        }
+    }
+
     public function getBridgeStatus()
     {
         $user = Auth::user();

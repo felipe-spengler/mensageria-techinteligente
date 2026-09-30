@@ -284,15 +284,21 @@ class AdminController extends Controller
         return view('admin.whatsapp', compact('instance'));
     }
 
-    public function startWhatsapp()
+    public function startWhatsapp(Request $request)
     {
         $user = Auth::user();
         $instance = \App\Models\WhatsappInstance::where('user_id', $user->id)->firstOrFail();
         
+        $phoneNumber = $request->input('phoneNumber');
+
         // Call bridge to start
         $bridgeUrl = env('WPP_BRIDGE_URL', 'http://bridge:3000');
         try {
-            \Illuminate\Support\Facades\Http::timeout(5)->post("{$bridgeUrl}/start/{$instance->session_name}");
+            $payload = [];
+            if ($phoneNumber) {
+                $payload['phoneNumber'] = $phoneNumber;
+            }
+            \Illuminate\Support\Facades\Http::timeout(5)->post("{$bridgeUrl}/start/{$instance->session_name}", $payload);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Error starting bridge session: ' . $e->getMessage());
         }

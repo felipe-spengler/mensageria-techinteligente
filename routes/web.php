@@ -63,6 +63,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Bridge Status
     Route::get('/admin/bridge/qrcode', [ManualSendController::class, 'getBridgeQrCode']);
+    Route::get('/admin/bridge/code', [ManualSendController::class, 'getBridgeCode']);
     Route::get('/admin/bridge/status', [ManualSendController::class, 'getBridgeStatus']);
 
     // Database Manager (Raw)

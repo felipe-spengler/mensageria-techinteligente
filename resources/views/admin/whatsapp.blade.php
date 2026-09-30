@@ -100,13 +100,22 @@
                     </template>
                 </div>
 
-                <!-- QR Code Display -->
+                <!-- Connection Method Toggle -->
+                <div x-show="status !== 'CONNECTED'" class="mb-6 flex space-x-2 bg-dash-900 p-1 rounded-2xl border border-white/5 shadow-inner">
+                    <button @click="connectionMethod = 'qr'" :class="connectionMethod === 'qr' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'" class="flex-1 px-4 py-2 rounded-xl text-xs font-bold transition-all">QR Code</button>
+                    <button @click="connectionMethod = 'phone'" :class="connectionMethod === 'phone' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'" class="flex-1 px-4 py-2 rounded-xl text-xs font-bold transition-all">Número</button>
+                </div>
+
+                <!-- QR Code / Pairing Code Display -->
                 <div x-show="status !== 'CONNECTED'" class="p-6 bg-white rounded-[32px] shadow-2xl transition-all hover:scale-105">
-                    <div x-show="qrCode" class="w-64 h-64 flex items-center justify-center overflow-hidden">
-                        <img :src="qrCode" alt="QR Code WhatsApp" class="w-full h-full object-contain">
-                    </div>
                     
-                    <div x-show="!qrCode" class="w-64 h-64 flex flex-col items-center justify-center space-y-4">
+                    <!-- Modo QR -->
+                    <div x-show="connectionMethod === 'qr'">
+                        <div x-show="qrCode" class="w-64 h-64 flex items-center justify-center overflow-hidden">
+                            <img :src="qrCode" alt="QR Code WhatsApp" class="w-full h-full object-contain">
+                        </div>
+                        
+                        <div x-show="!qrCode" class="w-64 h-64 flex flex-col items-center justify-center space-y-4">
                         <!-- Mostra o spinner se estiver inicializando ou se o status for QR_READY mas a imagem ainda não baixou -->
                         <template x-if="status === 'INITIALIZING' || status === 'CONNECTING' || (status === 'QR_READY' && !qrCode)">
                             <div class="flex flex-col items-center">
@@ -125,6 +134,35 @@
                             </div>
                         </template>
                     </div>
+                    </div>
+
+                    <!-- Modo Número -->
+                    <div x-show="connectionMethod === 'phone'" class="w-64 h-64 flex flex-col items-center justify-center space-y-4 px-2">
+                        <template x-if="status === 'CODE_READY' && pairingCode">
+                            <div class="text-center w-full">
+                                <p class="text-[11px] text-gray-500 font-bold mb-3 uppercase tracking-wider">Digite no WhatsApp:</p>
+                                <div class="bg-gray-50 p-4 rounded-2xl border-2 border-dashed border-gray-300">
+                                    <h2 class="text-3xl tracking-widest font-mono text-blue-600 font-black" x-text="pairingCode"></h2>
+                                </div>
+                                <p class="text-[9px] text-gray-400 mt-4 leading-relaxed">Vá em Aparelhos Conectados > Vincular > Vincular com número de telefone</p>
+                            </div>
+                        </template>
+
+                        <template x-if="status !== 'CODE_READY'">
+                            <div class="w-full flex flex-col space-y-3">
+                                <label class="text-[11px] font-bold text-gray-500 text-left w-full uppercase tracking-wider">Seu Número com DDD</label>
+                                <input type="text" x-model="phoneNumberInput" placeholder="Ex: 5511999999999" class="w-full bg-gray-50 p-4 rounded-xl border-2 border-gray-100 text-sm font-mono text-gray-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-all text-center">
+                                <p class="text-[9px] text-gray-400 text-center">Inclua o DDI (55) e DDD.</p>
+                                <template x-if="status === 'INITIALIZING' || status === 'CONNECTING'">
+                                    <div class="flex flex-col items-center mt-4">
+                                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mb-2"></div>
+                                        <p class="text-[9px] text-blue-500 font-bold uppercase tracking-widest text-center">Gerando código...</p>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+
                 </div>
 
                 <!-- Connected Display -->
@@ -169,6 +207,9 @@
             return {
                 status: '{{ strtoupper($instance->status ?? "DISCONNECTED") }}',
                 qrCode: null,
+                pairingCode: null,
+                phoneNumberInput: '',
+                connectionMethod: 'qr',
                 loading: false,
                 pollingToken: null,
 
@@ -214,9 +255,14 @@
                         }
                         
                         if (['QR_READY', 'INITIALIZING', 'CONNECTING', 'UNKNOWN', 'OFFLINE'].includes(this.status)) {
-                            await this.fetchQrCode();
+                            if (this.connectionMethod === 'qr') {
+                                await this.fetchQrCode();
+                            }
+                        } else if (this.status === 'CODE_READY') {
+                            await this.fetchPairingCode();
                         } else {
                             this.qrCode = null;
+                            this.pairingCode = null;
                         }
                     } catch(e) { console.error('Status Error:', e.message); }
                     this.loading = false;
@@ -225,13 +271,19 @@
                 async startConnection() {
                     this.loading = true;
                     try {
+                        let payload = {};
+                        if (this.connectionMethod === 'phone' && this.phoneNumberInput.trim() !== '') {
+                            payload.phoneNumber = this.phoneNumberInput.replace(/\D/g, '');
+                        }
+
                         const res = await fetch('{{ route('admin.whatsapp.start') }}', {
                             method: 'POST',
                             headers: {
                                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
                                 'Content-Type': 'application/json',
                                 'Accept': 'application/json'
-                            }
+                            },
+                            body: JSON.stringify(payload)
                         });
                         if (res.ok) {
                             this.status = 'INITIALIZING';
@@ -261,6 +313,19 @@
                             console.log('QR Code 404. Aguardando...');
                         }
                     } catch(e) { console.error('QR Error:', e.message); }
+                },
+
+                async fetchPairingCode() {
+                    if (this.status === 'CONNECTED') return;
+                    try {
+                        const res = await fetch('/admin/bridge/code');
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.code) {
+                                this.pairingCode = data.code;
+                            }
+                        }
+                    } catch(e) { console.error('Pairing Code Error:', e.message); }
                 },
 
                 async logoutWhatsApp() {
