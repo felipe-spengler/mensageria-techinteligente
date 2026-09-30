@@ -543,10 +543,12 @@ async function startWorker(sessionName) {
 
                 // Trata o erro 'No LID for user' tentando validar o número antes do envio
                 try {
+                    console.time(`[WORKER] [${sessionName}] checkNumberStatus`);
                     const profile = await Promise.race([
                         client.checkNumberStatus(to),
                         new Promise((_, reject) => setTimeout(() => reject(new Error('checkNumberStatus timed out after 15s')), 15000))
                     ]);
+                    console.timeEnd(`[WORKER] [${sessionName}] checkNumberStatus`);
                     if (profile && profile.numberExists && profile.id && profile.id._serialized) {
                         to = profile.id._serialized;
                     } else if (profile && !profile.numberExists) {
@@ -595,10 +597,12 @@ async function startWorker(sessionName) {
                     ? client.sendFile(to, mediaPath, 'file', message.message)
                     : client.sendText(to, message.message);
 
+                console.time(`[WORKER] [${sessionName}] sendOp`);
                 await Promise.race([
                     sendOp,
                     new Promise((_, reject) => setTimeout(() => reject(new Error('Send operation timed out after 90s')), 90000))
                 ]);
+                console.timeEnd(`[WORKER] [${sessionName}] sendOp`);
 
                 // Limpeza imediata de arquivo temporário
                 if (isTempFile && fs.existsSync(mediaPath)) {
@@ -607,11 +611,14 @@ async function startWorker(sessionName) {
 
                 // Notifica o Laravel em background (sem await) para não travar a fila se o servidor demorar a responder
                 notifyLaravel(message.log_id, 'sent').catch(e => console.error(`[WORKER] Erro notificação background:`, e.message));
+                
+                console.time(`[WORKER] [${sessionName}] redisOps`);
                 // Salva no cache de deduplicação por 24 horas para evitar reenvios acidentais
                 await redis.set(dedupKey, '1', 'EX', 86400); 
                 
                 // LIBERA O ID: A mensagem foi enviada, pode ser enfileirada de novo no futuro se necessário
                 await redis.del(`wpp_enqueued:${message.log_id}`);
+                console.timeEnd(`[WORKER] [${sessionName}] redisOps`);
             } catch (error) {
                 let errorMessage = error.message || 'Unknown error';
                 console.error(`[WORKER] [${sessionName}] Error:`, errorMessage);
