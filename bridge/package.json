@@ -11,7 +11,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@wppconnect-team/wppconnect": "latest",
+    "@wppconnect-team/wppconnect": "^2.3.6",
+    "@wppconnect/wa-js": "^4.7.2",
     "@wppconnect/wa-version": "latest",
     "axios": "^1.13.6",
     "dotenv": "^17.3.1",

@@ -281,6 +281,21 @@ async function initWhatsApp(sessionName, phoneNumber = null) {
             }
         });
 
+        // Check if already connected on startup (restored session)
+        setTimeout(async () => {
+            try {
+                if (clients.has(sessionName)) {
+                    const isConn = await client.isConnected();
+                    if (isConn) {
+                        console.log(`[${sessionName}] Initial check: Session is already CONNECTED!`);
+                        connectionStatuses.set(sessionName, 'connected');
+                        notifyLaravelStatus(sessionName, 'connected');
+                        qrReadyTimestamps.delete(sessionName);
+                    }
+                }
+            } catch (e) {}
+        }, 5000);
+
         startWorker(sessionName);
     } catch (err) {
         console.error(`[${sessionName}] Error creating client:`, err.message);
@@ -346,7 +361,22 @@ function startSessionWatchdog() {
     setInterval(async () => {
         for (const [name, client] of clients.entries()) {
             try {
-                const status = connectionStatuses.get(name);
+                let status = connectionStatuses.get(name);
+
+                // --- SYNC REAL CONNECTION STATE ---
+                if (client && status !== 'connected') {
+                    try {
+                        const isConn = await client.isConnected();
+                        if (isConn) {
+                            console.log(`[WATCHDOG] [${name}] Session is actively connected! Syncing status.`);
+                            connectionStatuses.set(name, 'connected');
+                            status = 'connected';
+                            qrReadyTimestamps.delete(name);
+                            notifyLaravelStatus(name, 'connected');
+                            continue;
+                        }
+                    } catch (_) {}
+                }
                 
                 // --- CONNECTING TIMEOUT LOGIC ---
                 if (status === 'connecting') {
