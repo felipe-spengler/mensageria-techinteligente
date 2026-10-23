@@ -92,10 +92,10 @@ class MessageController extends Controller
             // 2. Check message limit based on cycle start (to avoid issues if updated_at changes manually)
             $cycleStart = $apiKey->updated_at;
             if ($apiKey->expires_at && $apiKey->plan && $apiKey->plan->duration_days > 0) {
-                // Se temos uma data de expiração, o ciclo começou há "duration_days" atrás dessa data.
-                $calculatedStart = $apiKey->expires_at->copy()->subDays($apiKey->plan->duration_days);
-                // Usamos a maior data (mais recente) entre a calculada e o fallback,
-                // mas na real a calculada é a mais confiável para não ser afetada por updates manuais.
+                // Se temos uma data de expiração, o ciclo começou há 1 mês (ou duration_days) atrás no início do dia.
+                $calculatedStart = ($apiKey->plan->duration_days >= 30)
+                    ? $apiKey->expires_at->copy()->subMonth()->startOfDay()
+                    : $apiKey->expires_at->copy()->subDays($apiKey->plan->duration_days)->startOfDay();
                 $cycleStart = $calculatedStart;
             }
 

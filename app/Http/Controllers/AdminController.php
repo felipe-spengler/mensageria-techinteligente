@@ -189,7 +189,15 @@ class AdminController extends Controller
         // Uso do Plano
         $apiKey           = ApiKey::where('user_id', $user->id)->where('status', 'active')->with('plan')->first();
         $planLimit        = $apiKey?->plan?->message_limit ?? 0;
-        $planUsage        = $apiKey ? MessageLog::where('api_key_id', $apiKey->id)->where('created_at', '>=', $apiKey->updated_at)->count() : 0;
+
+        $cycleStart = $apiKey?->updated_at;
+        if ($apiKey?->expires_at && $apiKey?->plan && $apiKey?->plan->duration_days > 0) {
+            $cycleStart = ($apiKey->plan->duration_days >= 30)
+                ? $apiKey->expires_at->copy()->subMonth()->startOfDay()
+                : $apiKey->expires_at->copy()->subDays($apiKey->plan->duration_days)->startOfDay();
+        }
+
+        $planUsage        = $apiKey ? MessageLog::where('api_key_id', $apiKey->id)->where('created_at', '>=', $cycleStart)->count() : 0;
         $planUsagePercent = $planLimit > 0 ? min(100, round(($planUsage / $planLimit) * 100)) : 0;
 
         // Estado da fila
@@ -627,6 +635,11 @@ class AdminController extends Controller
             
             if ($activeKey) {
                 $cycleStart = $activeKey->updated_at;
+                if ($activeKey->expires_at && $activeKey->plan && $activeKey->plan->duration_days > 0) {
+                    $cycleStart = ($activeKey->plan->duration_days >= 30)
+                        ? $activeKey->expires_at->copy()->subMonth()->startOfDay()
+                        : $activeKey->expires_at->copy()->subDays($activeKey->plan->duration_days)->startOfDay();
+                }
 
                 $monthlyUsage = MessageLog::where('api_key_id', $activeKey->id)
                     ->where('status', 'sent')
