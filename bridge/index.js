@@ -189,7 +189,7 @@ async function initWhatsApp(sessionName, phoneNumber = null) {
                 const finalQr = (typeof base64Qr === 'string' && base64Qr.startsWith('data:image')) ? base64Qr : (urlCode || base64Qr);
                 qrCodes.set(sessionName, finalQr);
                 connectionStatuses.set(sessionName, 'qr_ready');
-                console.log(`[${sessionName}] QR Code updated! Base64 len: ${finalQr ? finalQr.length : 0}`);
+                console.log(`[${sessionName}] QR Code updated! (Attempt ${attempt || 1}) Base64 len: ${finalQr ? finalQr.length : 0}`);
                 notifyLaravelStatus(sessionName, 'qr_ready');
             },
             statusFind: (status) => {
@@ -285,9 +285,9 @@ async function initWhatsApp(sessionName, phoneNumber = null) {
         setTimeout(async () => {
             try {
                 if (clients.has(sessionName)) {
-                    const isConn = await client.isConnected();
+                    const isConn = await client.isLoggedIn();
                     if (isConn) {
-                        console.log(`[${sessionName}] Initial check: Session is already CONNECTED!`);
+                        console.log(`[${sessionName}] Initial check: Session is actively LOGGED IN!`);
                         connectionStatuses.set(sessionName, 'connected');
                         notifyLaravelStatus(sessionName, 'connected');
                         qrReadyTimestamps.delete(sessionName);
@@ -366,9 +366,9 @@ function startSessionWatchdog() {
                 // --- SYNC REAL CONNECTION STATE ---
                 if (client && status !== 'connected') {
                     try {
-                        const isConn = await client.isConnected();
+                        const isConn = await client.isLoggedIn();
                         if (isConn) {
-                            console.log(`[WATCHDOG] [${name}] Session is actively connected! Syncing status.`);
+                            console.log(`[WATCHDOG] [${name}] Session is actively logged in! Syncing status.`);
                             connectionStatuses.set(name, 'connected');
                             status = 'connected';
                             qrReadyTimestamps.delete(name);
@@ -580,30 +580,61 @@ async function startWorker(sessionName) {
                 let to = rawTo;
                 if (!to.includes('@')) to = to + '@c.us';
 
-                // Trata o erro 'No LID for user' tentando validar o número antes do envio
+                // Trata o erro 'No LID for user' e valida o número antes do envio
                 try {
                     console.time(`[WORKER] [${sessionName}] checkNumberStatus`);
-                    const profile = await Promise.race([
+                    let profile = await Promise.race([
                         client.checkNumberStatus(to),
                         new Promise((_, reject) => setTimeout(() => reject(new Error('checkNumberStatus timed out after 15s')), 15000))
                     ]);
                     console.timeEnd(`[WORKER] [${sessionName}] checkNumberStatus`);
+
+                    // Se não encontrou de primeira e for número individual brasileiro, tenta a variação do 9º dígito
+                    if ((!profile || !profile.numberExists) && !to.includes('@g.us')) {
+                        const cleanDigits = to.split('@')[0].replace(/\D/g, '');
+                        let altTo = null;
+                        if (cleanDigits.startsWith('55') && cleanDigits.length === 13) {
+                            // Tem 9º dígito: 55 + DDD (2) + 9 (1) + 8 dígitos = 13. Tenta remover o 9.
+                            altTo = cleanDigits.slice(0, 4) + cleanDigits.slice(5) + '@c.us';
+                        } else if (cleanDigits.startsWith('55') && cleanDigits.length === 12) {
+                            // Não tem 9º dígito: 55 + DDD (2) + 8 dígitos = 12. Tenta adicionar o 9.
+                            altTo = cleanDigits.slice(0, 4) + '9' + cleanDigits.slice(4) + '@c.us';
+                        }
+
+                        if (altTo) {
+                            try {
+                                console.log(`[WORKER] [${sessionName}] Tentando variação de número brasileiro: ${altTo}`);
+                                const altProfile = await Promise.race([
+                                    client.checkNumberStatus(altTo),
+                                    new Promise((_, reject) => setTimeout(() => reject(new Error('alt checkNumberStatus timed out after 10s')), 10000))
+                                ]);
+                                if (altProfile && altProfile.numberExists) {
+                                    profile = altProfile;
+                                    to = altTo;
+                                }
+                            } catch (altErr) {
+                                console.warn(`[WORKER] [${sessionName}] Erro na verificação alternativa:`, altErr.message);
+                            }
+                        }
+                    }
+
                     if (profile && profile.numberExists && profile.id && profile.id._serialized) {
                         to = profile.id._serialized;
                     } else if (profile && !profile.numberExists) {
-                        console.warn(`[WORKER] [${sessionName}] checkNumberStatus returned false for ${to}, but we will attempt to send anyway.`);
-                        // Do not throw, allow sendOp to attempt it.
+                        console.warn(`[WORKER] [${sessionName}] checkNumberStatus confirmou que o número ${rawTo} NÃO possui WhatsApp.`);
+                        throw new Error('O destinatário não possui WhatsApp.');
                     }
                 } catch (checkErr) {
+                    if (checkErr.message && checkErr.message.includes('não possui WhatsApp')) {
+                        throw checkErr;
+                    }
                     console.log(`[WORKER] [${sessionName}] checkNumberStatus falhou para ${to}: ${checkErr.message || checkErr}`);
                     if (checkErr.message && (
                         checkErr.message.includes('timed out') || 
                         checkErr.message.includes('Runtime.callFunctionOn') || 
-                        checkErr.message.includes('protocol error') ||
-                        checkErr.message.includes('Invariant Violation') ||
-                        checkErr.message.includes('Minified invariant')
+                        checkErr.message.includes('protocol error')
                     )) {
-                        throw checkErr; // Repassa o erro para cair no catch externo e disparar a limpeza
+                        throw checkErr;
                     }
                 }
 
@@ -662,60 +693,37 @@ async function startWorker(sessionName) {
                 let errorMessage = error.message || 'Unknown error';
                 console.error(`[WORKER] [${sessionName}] Error:`, errorMessage);
 
-                const isInvariantViolation = errorMessage.includes('Invariant Violation') || errorMessage.includes('Minified invariant');
+                const isFatalBrowserCrash = errorMessage.includes('Runtime.callFunctionOn') || 
+                    errorMessage.includes('protocol error') || 
+                    errorMessage.includes('Target closed') ||
+                    errorMessage.includes('Session closed');
 
-                // Se o erro for do Puppeteer/Chromium, damos um detalhe extra
-                if (errorMessage.includes('Runtime.callFunctionOn') || errorMessage.includes('protocol error') || errorMessage.includes('timed out') || isInvariantViolation) {
-                    if (isInvariantViolation) {
-                        errorMessage = 'Browser Session Corrupted (Invariant Violation): ' + errorMessage;
-                    } else {
-                        errorMessage = 'Browser Unresponsive: ' + errorMessage;
-                    }
-                    
+                const isInvariantViolation = errorMessage.includes('Invariant Violation') || 
+                    errorMessage.includes('Minified invariant') || 
+                    errorMessage.includes('No LID for user');
+
+                if (isFatalBrowserCrash) {
+                    errorMessage = 'Browser Unresponsive: ' + errorMessage;
                     // Atualiza o status local e notifica o Laravel para o Watchdog reiniciar
                     connectionStatuses.set(sessionName, 'failed');
                     notifyLaravelStatus(sessionName, 'failed');
+                }
 
-                    if (isInvariantViolation) {
-                        console.warn(`[WORKER] [${sessionName}] Invariant Violation detectado. Limpando pasta de tokens para forçar novo QR Code...`);
-                        const sessionPath = path.join(__dirname, 'tokens', sessionName);
-                        try {
-                            const clientToClose = clients.get(sessionName);
-                            if (clientToClose) {
-                                clients.delete(sessionName);
-                                qrCodes.delete(sessionName);
-                                await Promise.race([
-                                    clientToClose.close(),
-                                    new Promise((_, reject) => setTimeout(() => reject(new Error('Close timeout')), 5000))
-                                ]).catch(e => console.warn(`[WORKER] [${sessionName}] Erro ao fechar client:`, e.message));
-                            }
-                        } catch (closeErr) {
-                            console.error(`[WORKER] [${sessionName}] Falha ao encerrar client:`, closeErr.message);
-                        }
-                        
-                        try {
-                            // Em Invariant Violation, geralmente apenas remover o SingletonLock ajuda sem deslogar o cliente
-                            const singletonLock = path.join(sessionPath, 'SingletonLock');
-                            if (fs.existsSync(singletonLock)) {
-                                fs.unlinkSync(singletonLock);
-                                console.log(`[WORKER] [${sessionName}] SingletonLock deletado com sucesso para tentar recuperar Invariant Violation.`);
-                            }
-                        } catch (rmErr) {
-                            console.error(`[WORKER] [${sessionName}] Erro ao deletar SingletonLock:`, rmErr.message);
-                        }
-                    }
+                if (isInvariantViolation) {
+                    errorMessage = 'Falha ao entregar mensagem no WhatsApp (Destinatário incompatível ou sem WhatsApp): ' + errorMessage;
                 }
 
                 const isDefinitiveError = errorMessage.includes('destinatário não possui WhatsApp') ||
-                    errorMessage.includes('No LID for user') ||
+                    errorMessage.includes('não possui WhatsApp') ||
                     errorMessage.includes('not exists') ||
                     errorMessage.includes('Rate limit') ||
-                    errorMessage.includes('invalid');
+                    errorMessage.includes('invalid') ||
+                    isInvariantViolation;
 
                 const maxRetries = 3;
                 message.retries = (message.retries || 0) + 1;
 
-                if (!isDefinitiveError && message.retries <= maxRetries) {
+                if (!isDefinitiveError && message.retries <= maxRetries && !isFatalBrowserCrash) {
                     console.log(`[WORKER] [${sessionName}] Erro temporário. Tentativa ${message.retries}/${maxRetries}. Erro: ${errorMessage}`);
                     await redis.rpush(sessionKey, JSON.stringify(message));
                 } else {
