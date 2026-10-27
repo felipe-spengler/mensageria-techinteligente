@@ -136,16 +136,23 @@ async function initWhatsApp(sessionName, phoneNumber = null) {
         return;
     }
 
-    // Global Lock: Evita que múltiplos Chromiums iniciem simultaneamente,
-    // o que causa picos de CPU e falhas no handshake do QR Code.
-    while (isInitializingGlobal) {
-        console.log(`[BOOT] [${sessionName}] Another session is initializing, waiting...`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-    }
+    // Immediately claim session to prevent concurrent invocations
+    sessionsStarting.add(sessionName);
 
     let lockTimer;
     try {
-        sessionsStarting.add(sessionName);
+        // Global Lock: Evita que múltiplos Chromiums iniciem simultaneamente
+        while (isInitializingGlobal) {
+            console.log(`[BOOT] [${sessionName}] Another session is initializing, waiting...`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        if (clients.has(sessionName)) {
+            console.log(`[BOOT] [${sessionName}] Client already created while waiting for lock.`);
+            sessionsStarting.delete(sessionName);
+            return;
+        }
+
         isInitializingGlobal = true;
         
         // Timer de segurança para liberar o lock se o wppconnect demorar demais (ex: esperando scan)
@@ -272,12 +279,22 @@ async function initWhatsApp(sessionName, phoneNumber = null) {
         console.log(`[${sessionName}] WhatsApp Client Ready (Waiting for Scan or Connected)!`);
         
         // Handle state changes that statusFind might miss (e.g. in newer wppconnect versions)
-        client.onStateChange((state) => {
+        client.onStateChange(async (state) => {
             console.log(`[${sessionName}] onStateChange:`, state);
             if (state === 'CONNECTED' || state === 'SYNCING') {
-                connectionStatuses.set(sessionName, 'connected');
-                notifyLaravelStatus(sessionName, 'connected');
-                qrReadyTimestamps.delete(sessionName);
+                const isLogged = await client.isLoggedIn().catch(() => false);
+                if (isLogged) {
+                    connectionStatuses.set(sessionName, 'connected');
+                    qrCodes.delete(sessionName);
+                    linkCodes.delete(sessionName);
+                    notifyLaravelStatus(sessionName, 'connected');
+                    qrReadyTimestamps.delete(sessionName);
+                } else {
+                    console.log(`[${sessionName}] onStateChange is ${state}, but isLoggedIn() is false. Preserving qr_ready/connecting status.`);
+                }
+            } else if (state === 'DISCONNECTED') {
+                connectionStatuses.set(sessionName, 'disconnected');
+                notifyLaravelStatus(sessionName, 'disconnected');
             }
         });
 
@@ -810,10 +827,31 @@ async function notifyLaravelStatus(session, status) {
 // ─────────────────────────────────────────────────────────────────────────────
 // ROUTES
 // ─────────────────────────────────────────────────────────────────────────────
-app.get('/qrcode/:session', (req, res) => {
+app.get('/qrcode/:session', async (req, res) => {
     const session = req.params.session;
-    const qr = qrCodes.get(session);
+    let qr = qrCodes.get(session);
     const status = connectionStatuses.get(session);
+
+    // Fallback: Se o QR ainda não foi capturado via evento mas o canvas já existe na página
+    if (!qr && clients.has(session)) {
+        try {
+            const client = clients.get(session);
+            if (client && client.page) {
+                const canvasQr = await client.page.evaluate(() => {
+                    const canvas = document.querySelector('canvas');
+                    return canvas ? canvas.toDataURL('image/png') : null;
+                });
+                if (canvasQr) {
+                    qr = canvasQr;
+                    qrCodes.set(session, canvasQr);
+                    connectionStatuses.set(session, 'qr_ready');
+                    notifyLaravelStatus(session, 'qr_ready');
+                }
+            }
+        } catch (e) {
+            console.warn(`[${session}] Erro capturando canvas QR:`, e.message);
+        }
+    }
 
     if (qr) {
         const base64Data = qr.replace(/^data:image\/png;base64,/, "");
@@ -861,6 +899,54 @@ app.get('/host/:session', async (req, res) => {
     try {
         const device = await client.getHostDevice();
         res.json(device);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/debug/:session', async (req, res) => {
+    const session = req.params.session;
+    const client = clients.get(session);
+    if (!client) return res.status(404).json({ error: 'Session not found' });
+    try {
+        let isLogged = null;
+        let isLoggedErr = null;
+        try { isLogged = await client.isLoggedIn(); } catch (e) { isLoggedErr = e.message; }
+
+        let isConn = null;
+        let isConnErr = null;
+        try { isConn = await client.isConnected(); } catch (e) { isConnErr = e.message; }
+
+        let state = null;
+        let stateErr = null;
+        try { state = await client.getConnectionState(); } catch (e) { stateErr = e.message; }
+
+        let evalDebug = null;
+        if (client.page) {
+            evalDebug = await client.page.evaluate(() => {
+                return {
+                    hasWAPI: typeof window.WAPI !== 'undefined',
+                    wapiIsLoggedIn: typeof window.WAPI?.isLoggedIn === 'function' ? window.WAPI.isLoggedIn() : null,
+                    hasWPP: typeof window.WPP !== 'undefined',
+                    wppIsReady: window.WPP?.isReady,
+                    wppIsLoggedIn: typeof window.WPP?.conn?.isLoggedIn === 'function' ? window.WPP.conn.isLoggedIn() : null,
+                    wppIsAuth: typeof window.WPP?.auth?.isLoggedIn === 'function' ? window.WPP.auth.isLoggedIn() : null,
+                    meUser: window.WPP?.whatsapp?.Conn?.me?.user || null
+                };
+            }).catch(e => e.message);
+        }
+
+        res.json({
+            session,
+            status: connectionStatuses.get(session),
+            isLogged,
+            isLoggedErr,
+            isConn,
+            isConnErr,
+            state,
+            stateErr,
+            evalDebug
+        });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -943,11 +1029,24 @@ app.post('/check-number/:session', async (req, res) => {
     }
 });
 
-app.get('/status/:session', (req, res) => {
+app.get('/status/:session', async (req, res) => {
     const session = req.params.session;
     let status = (connectionStatuses.get(session) || 'offline').toString().toLowerCase();
 
-    if (['islogged', 'logged', 'authenticated', 'main', 'syncing', 'inchat'].includes(status)) {
+    if (clients.has(session)) {
+        const client = clients.get(session);
+        if (qrCodes.has(session) && status !== 'connected') {
+            status = 'qr_ready';
+        } else if (status === 'connected') {
+            const reallyLogged = await client.isLoggedIn().catch(() => false);
+            if (!reallyLogged) {
+                status = qrCodes.has(session) ? 'qr_ready' : 'connecting';
+                connectionStatuses.set(session, status);
+            }
+        }
+    }
+
+    if (['islogged', 'logged', 'authenticated', 'main', 'inchat'].includes(status)) {
         status = 'connected';
     }
     if (status.includes('qr') || status.includes('notlogged')) {
