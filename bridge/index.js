@@ -449,7 +449,7 @@ function startSessionWatchdog() {
                     }
 
                     // Se for erro de autenticação ou QR, limpa a cache para gerar QR novo
-                    if (['qrreaderror', 'autoclose', 'auth_failure'].includes(status)) {
+                    if (['qrreaderror', 'autoclose', 'auth_failure', 'failed'].includes(status)) {
                         console.log(`[WATCHDOG] Status ${status} detectado. Limpando cache de tokens para forçar auto-recuperação total.`);
                         try {
                             const tokenPath = path.join(__dirname, 'tokens', name);
@@ -506,9 +506,23 @@ async function startWorker(sessionName) {
             }
 
             const status = connectionStatuses.get(sessionName);
-            const isConnected = status && ['islogged', 'logged', 'authenticated', 'main', 'syncing', 'inchat', 'connected'].includes(status.toLowerCase());
+            const isConnected = status && ['islogged', 'logged', 'authenticated', 'main', 'inchat', 'connected'].includes(status.toLowerCase());
             if (!isConnected) {
                 console.log(`[WORKER] [${sessionName}] Instance status is '${status}' (not connected). Waiting 10s...`);
+                await new Promise(resolve => setTimeout(resolve, 10000));
+                continue;
+            }
+
+            // Real verify: Ensure client is genuinely logged in and ready
+            try {
+                const reallyLoggedIn = await client.isLoggedIn();
+                if (!reallyLoggedIn) {
+                    console.log(`[WORKER] [${sessionName}] client.isLoggedIn() é falso. Aguardando login...`);
+                    await new Promise(resolve => setTimeout(resolve, 10000));
+                    continue;
+                }
+            } catch (err) {
+                console.warn(`[WORKER] [${sessionName}] Erro checando isLoggedIn:`, err.message);
                 await new Promise(resolve => setTimeout(resolve, 10000));
                 continue;
             }
@@ -620,9 +634,8 @@ async function startWorker(sessionName) {
 
                     if (profile && profile.numberExists && profile.id && profile.id._serialized) {
                         to = profile.id._serialized;
-                    } else if (profile && !profile.numberExists) {
-                        console.warn(`[WORKER] [${sessionName}] checkNumberStatus confirmou que o número ${rawTo} NÃO possui WhatsApp.`);
-                        throw new Error('O destinatário não possui WhatsApp.');
+                    } else {
+                        console.log(`[WORKER] [${sessionName}] checkNumberStatus não retornou LID para ${rawTo}. Tentando envio direto para ${to}...`);
                     }
                 } catch (checkErr) {
                     if (checkErr.message && checkErr.message.includes('não possui WhatsApp')) {
@@ -954,7 +967,27 @@ app.post('/start/:session', async (req, res) => {
     const { phoneNumber } = req.body; // Pega o número se vier pelo JSON
     
     if (clients.has(session)) {
-        return res.json({ status: 'already_running', session });
+        const existingClient = clients.get(session);
+        let isConn = false;
+        try {
+            isConn = await existingClient.isLoggedIn();
+        } catch (_) {}
+
+        if (isConn) {
+            return res.json({ status: 'already_connected', session });
+        }
+
+        // Se tem client mas não está logado, reinicia a sessão para gerar novo QR ou Pairing Code
+        console.log(`[${session}] Reiniciando sessão não-autenticada via /start...`);
+        try {
+            await Promise.race([
+                existingClient.close(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Close timeout')), 5000))
+            ]);
+        } catch (_) {}
+        clients.delete(session);
+        qrCodes.delete(session);
+        linkCodes.delete(session);
     }
     
     initWhatsApp(session, phoneNumber); // async but we don't await full readiness
