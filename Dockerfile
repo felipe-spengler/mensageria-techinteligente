@@ -1,5 +1,8 @@
 # Force Clean Build - v2
-FROM php:8.4-apache
+FROM php:8.4.27-apache
+
+# Mitigação de vulnerabilidade PHP2Shell / Upload progress
+RUN echo "session.upload_progress.enabled=0" > /usr/local/etc/php/conf.d/security.ini
 
 # Metadata
 LABEL maintainer="TechInteligente" \
